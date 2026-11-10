@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "build:signed": "node scripts/build-signed.js"
+    "build:signed": "node scripts/build-signed.js",
+    "manifest:generate": "node scripts/generate-manifest.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

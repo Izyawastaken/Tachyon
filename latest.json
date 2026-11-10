@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "notes": "Tachyon v0.0.1 update",
+  "pub_date": "2026-11-10T00:21:26.724Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "<PASTE_SIGNATURE_FROM_SIG_FILE_HERE>",
+      "url": "https://github.com/Izyawastaken/Tachyon/releases/download/v0.0.1/tachyon_0.0.1_x64-setup.nsis.zip"
+    }
+  }
+}

@@ -1,50 +1,59 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
+import { UpdateButton } from "./components/UpdateButton";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+export function App() {
+  const [currentVersion, setCurrentVersion] = useState("0.0.1");
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  useEffect(() => {
+    getVersion()
+      .then((ver) => setCurrentVersion(ver))
+      .catch(() => {
+        // Fallback when previewing outside Tauri
+      });
+  }, []);
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <>
+      <div className="window-drag-region" data-tauri-drag-region>
+        <span className="window-title">Tachyon</span>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+      <main className="app-container">
+        <header className="app-header">
+          <div className="brand-badge">
+            <span className="brand-pulse" />
+            <span>Tachyon Engine</span>
+          </div>
+          <h1 className="app-title">Tachyon</h1>
+          <p className="app-subtitle">
+            Next-generation desktop application workspace. Fast, native, and always updated.
+          </p>
+        </header>
+
+        <section className="app-content">
+          {/* Metadata Overview */}
+          <div className="meta-grid">
+            <div className="meta-card">
+              <span className="meta-label">Installed Version</span>
+              <span className="meta-value">v{currentVersion}</span>
+            </div>
+            <div className="meta-card">
+              <span className="meta-label">Update Channel</span>
+              <span className="meta-value">GitHub Releases</span>
+            </div>
+          </div>
+
+          {/* Reusable Update Component */}
+          <UpdateButton variant="card" autoCheck={false} />
+        </section>
+
+        <footer className="app-footer">
+          <span>Tachyon • Built with Tauri v2 + React</span>
+        </footer>
+      </main>
+    </>
   );
 }
 
