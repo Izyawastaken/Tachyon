@@ -12,6 +12,7 @@ pub fn run() {
             app.manage(explore::ExploreState::new(
                 app.path().app_cache_dir()?.join("explore"),
             ));
+            explore::warm_at_launch(app.handle().clone());
             Ok(())
         })
         .plugin(tauri_plugin_updater::Builder::new().build())

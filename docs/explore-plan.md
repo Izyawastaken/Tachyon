@@ -15,6 +15,7 @@ Branch: `codex/features/explore`, based on `exp-dev`. Work sequentially and merg
 
 - [x] 1. Inspect shell, installed Engram 0.2.5 source/docs and current Modrinth API. Define architecture.
 - [x] 2. Rust catalog and media service, Tauri commands, Engram V1/R1 integration and backend tests.
+- [x] 2b. Launch L2-to-L1 warm-up, two-page lookahead, stale-while-revalidate events and obsolete-prefetch cancellation.
 - [x] 3. Explore routing, search/grid, top filter drawer and bottom type selector.
 - [ ] 4. Shared card/detail spring morph, hold-Space Quick Look, accessible interaction cleanup.
 - [ ] 5. Backend tests, actual-origin smoke test, UI verification, production build, then merge into exp-dev.

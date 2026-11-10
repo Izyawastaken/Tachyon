@@ -68,10 +68,10 @@ impl Transport {
             if let Some(etag) = &meta.etag {
                 request = request.header(header::IF_NONE_MATCH, etag);
             }
-            if let Ok(modified) = std::str::from_utf8(&meta.opaque) {
-                if !modified.is_empty() {
-                    request = request.header(header::IF_MODIFIED_SINCE, modified);
-                }
+            if let Ok(modified) = std::str::from_utf8(&meta.opaque)
+                && !modified.is_empty()
+            {
+                request = request.header(header::IF_MODIFIED_SINCE, modified);
             }
         }
         let response = request.send().await.map_err(|_| {

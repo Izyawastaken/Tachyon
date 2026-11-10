@@ -1,5 +1,6 @@
 mod media;
 mod models;
+mod prefetch;
 mod source;
 #[cfg(test)]
 mod tests;
@@ -14,22 +15,32 @@ use serde::{Serialize, de::DeserializeOwned};
 use source::{JsonSource, Transport};
 use std::{
     path::PathBuf,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
     time::Duration,
 };
-use tauri::State;
-use tokio::sync::OnceCell;
+use tauri::{Emitter, Manager, State};
+use tokio::sync::{OnceCell, Semaphore};
 
 const API: &str = "https://api.modrinth.com/v2/";
+#[derive(Clone, Serialize)]
+struct CatalogRefresh {
+    input: SearchInput,
+    result: CatalogResult<SearchPage>,
+}
 pub struct ExploreState {
     root: PathBuf,
-    backend: OnceCell<Backend>,
+    backend: OnceCell<Arc<Backend>>,
+    prefetch: prefetch::Window,
 }
 struct Backend {
     cache: Engram,
     transport: Transport,
     media: PathBuf,
     media_requests: AtomicUsize,
+    background_slots: Semaphore,
 }
 
 impl ExploreState {
@@ -37,9 +48,10 @@ impl ExploreState {
         Self {
             root,
             backend: OnceCell::new(),
+            prefetch: prefetch::Window::default(),
         }
     }
-    async fn backend(&self) -> Result<&Backend, String> {
+    async fn backend(&self) -> Result<&Arc<Backend>, String> {
         self.backend
             .get_or_try_init(|| async {
                 let media = self.root.join("media");
@@ -61,18 +73,101 @@ impl ExploreState {
                 tauri::async_runtime::spawn(async move {
                     let _ = media::prune(&prune_root).await;
                 });
-                Ok(Backend {
+                Ok(Arc::new(Backend {
                     cache,
                     transport: Transport::new().map_err(|e| e.to_string())?,
                     media,
                     media_requests: AtomicUsize::new(0),
-                })
+                    background_slots: Semaphore::new(2),
+                }))
             })
             .await
     }
 }
 
 impl Backend {
+    fn search_url(input: &SearchInput) -> Result<Url, String> {
+        let mut url = Url::parse(&format!("{API}search")).map_err(|e| e.to_string())?;
+        url.query_pairs_mut()
+            .append_pair("query", &input.query)
+            .append_pair(
+                "facets",
+                &serde_json::to_string(&input.facets()).map_err(|e| e.to_string())?,
+            )
+            .append_pair("index", &input.sort)
+            .append_pair("offset", &input.offset.to_string())
+            .append_pair("limit", "24");
+        Ok(url)
+    }
+
+    fn key<T>(url: &Url, schema: &str) -> CacheKey<T> {
+        CacheKey::new(
+            format!(
+                "explore/{schema}/{}",
+                media::digest(url.as_str().as_bytes())
+            ),
+            schema,
+        )
+    }
+
+    async fn visible_search(
+        self: &Arc<Self>,
+        input: SearchInput,
+        app: tauri::AppHandle,
+    ) -> Result<CatalogResult<SearchPage>, String> {
+        let key = Self::key::<SearchPage>(&Self::search_url(&input)?, "modrinth-search@1");
+        if let Some(page) = self
+            .cache
+            .get_arc_key(&key)
+            .await
+            .map_err(|e| e.to_string())?
+        {
+            let metadata = self
+                .cache
+                .metadata(key.key())
+                .await
+                .map_err(|e| e.to_string())?;
+            let stale = metadata
+                .and_then(|meta| meta.validated_at)
+                .and_then(|time| time.elapsed().ok())
+                .is_none_or(|age| age >= Duration::from_secs(120));
+            if stale {
+                let refresh = self.cache.resolve_in_background(
+                    key.clone(),
+                    ResolveOptions {
+                        ttl: Some(Duration::from_secs(86400)),
+                        validation: ValidationPolicy::After(Duration::from_secs(120)),
+                        retrieve_on_unverifiable: true,
+                        ..Default::default()
+                    },
+                    Arc::new(JsonSource::new(
+                        self.transport.clone(),
+                        Self::search_url(&input)?,
+                    )),
+                );
+                tauri::async_runtime::spawn(async move {
+                    if let Ok(Ok(resolved)) = refresh.await {
+                        let result = CatalogResult {
+                            data: resolved.value,
+                            stale: matches!(
+                                resolved.status,
+                                ResolveStatus::StaleUnavailable | ResolveStatus::StaleUnverifiable
+                            ),
+                        };
+                        let _ = app.emit(
+                            "explore:catalog-refreshed",
+                            CatalogRefresh { input, result },
+                        );
+                    }
+                });
+            }
+            return Ok(CatalogResult {
+                data: (*page).clone(),
+                stale,
+            });
+        }
+        self.search(input).await
+    }
     async fn json<T>(
         &self,
         url: Url,
@@ -83,13 +178,7 @@ impl Backend {
     where
         T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     {
-        let key = CacheKey::<T>::new(
-            format!(
-                "explore/{schema}/{}",
-                media::digest(url.as_str().as_bytes())
-            ),
-            schema,
-        );
+        let key = Self::key::<T>(&url, schema);
         let source = JsonSource::new(self.transport.clone(), url);
         let resolved = self
             .cache
@@ -117,17 +206,8 @@ impl Backend {
 
     async fn search(&self, input: SearchInput) -> Result<CatalogResult<SearchPage>, String> {
         let input = input.canonicalize()?;
-        let mut url = Url::parse(&format!("{API}search")).map_err(|e| e.to_string())?;
-        url.query_pairs_mut()
-            .append_pair("query", &input.query)
-            .append_pair(
-                "facets",
-                &serde_json::to_string(&input.facets()).map_err(|e| e.to_string())?,
-            )
-            .append_pair("index", &input.sort)
-            .append_pair("offset", &input.offset.to_string())
-            .append_pair("limit", "24");
-        self.json(url, "modrinth-search@1", 120, 86400).await
+        self.json(Self::search_url(&input)?, "modrinth-search@1", 120, 86400)
+            .await
     }
 
     async fn project(&self, id: &str) -> Result<CatalogResult<ProjectDetail>, String> {
@@ -199,9 +279,42 @@ fn render_markdown(markdown: &str) -> String {
 #[tauri::command]
 pub async fn explore_search(
     state: State<'_, ExploreState>,
+    app: tauri::AppHandle,
     input: SearchInput,
 ) -> Result<CatalogResult<SearchPage>, String> {
-    state.backend().await?.search(input).await
+    let input = input.canonicalize()?;
+    let generation = state.prefetch.begin(&input).await;
+    let backend = state.backend().await?;
+    let result = backend.visible_search(input.clone(), app).await?;
+    state
+        .prefetch
+        .schedule(backend.clone(), input, result.data.total_hits, generation)
+        .await;
+    Ok(result)
+}
+
+pub fn warm_at_launch(app: tauri::AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let state = app.state::<ExploreState>();
+        let Ok(backend) = state.backend().await else {
+            return;
+        };
+        let input = SearchInput {
+            kind: "mod".into(),
+            sort: "relevance".into(),
+            ..Default::default()
+        };
+        // A cache snapshot promotes a persisted L2 page before any validation I/O.
+        // Concurrent Explore requests join the same Engram flight.
+        if let Ok(page) = backend.search(input).await {
+            for hit in page.data.hits.iter().take(8) {
+                if let Some(url) = &hit.icon_url {
+                    let _ =
+                        media::image(&backend.cache, &backend.transport, &backend.media, url).await;
+                }
+            }
+        }
+    });
 }
 
 #[tauri::command]

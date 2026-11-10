@@ -1,5 +1,6 @@
 import { startTransition, useEffect, useState } from "react";
-import { errorMessage, getFilters, searchCatalog } from "../api";
+import { listen } from "@tauri-apps/api/event";
+import { errorMessage, getFilters, searchCatalog, searchIdentity } from "../api";
 import type { CatalogResult, Filters, SearchInput, SearchPage } from "../types";
 
 export function useDebouncedValue<T>(value: T, delay: number) {
@@ -15,16 +16,23 @@ export function useCatalog(input: SearchInput) {
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     let active = true;
+    let refreshed = false;
+    const subscription = listen<{ input: SearchInput; result: CatalogResult<SearchPage> }>("explore:catalog-refreshed", event => {
+      if (active && searchIdentity(event.payload.input) === searchIdentity(input)) {
+        refreshed = true;
+        startTransition(() => { setResult(event.payload.result); setLoading(false); });
+      }
+    }).catch(() => () => {});
     setLoading(true);
     setError(null);
     // Coalesce Strict Mode setup replay before crossing IPC.
     queueMicrotask(() => {
       if (!active) return;
       void searchCatalog(input).then(data => {
-        if (active) startTransition(() => { setResult(data); setLoading(false); });
-      }).catch(cause => { if (active) { setError(errorMessage(cause)); setLoading(false); } });
+        if (active && !refreshed) startTransition(() => { setResult(data); setLoading(false); });
+      }).catch(cause => { if (active && !refreshed) { setError(errorMessage(cause)); setLoading(false); } });
     });
-    return () => { active = false; };
+    return () => { active = false; void subscription.then(unlisten => unlisten()); };
   }, [input, retry]);
   return { result, loading, error, retry: () => setRetry(value => value + 1) };
 }

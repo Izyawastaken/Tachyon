@@ -164,7 +164,7 @@ pub struct Filters {
     pub categories: Vec<CategoryTag>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct CatalogResult<T> {
     pub data: T,
     pub stale: bool,

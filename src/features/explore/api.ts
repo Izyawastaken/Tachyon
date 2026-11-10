@@ -23,3 +23,6 @@ export function localImage(url: string): Promise<string> {
   return request;
 }
 export function errorMessage(error: unknown) { return error instanceof Error ? error.message : String(error); }
+export function searchIdentity(input: SearchInput) {
+  return JSON.stringify({ query: input.query.trim(), kind: input.kind, versions: [...input.versions].sort(), loaders: [...input.loaders].sort(), categories: [...input.categories].sort(), environment: input.environment, sort: input.sort, offset: input.offset });
+}

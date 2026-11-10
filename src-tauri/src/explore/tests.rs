@@ -15,6 +15,14 @@ struct Record {
     value: String,
 }
 
+#[test]
+fn lookahead_is_two_pages_and_never_runs_past_the_catalog() {
+    assert_eq!(super::prefetch::next_pages(0, 200), vec![24, 48]);
+    assert_eq!(super::prefetch::next_pages(24, 60), vec![48]);
+    assert!(super::prefetch::next_pages(48, 60).is_empty());
+    assert!(super::prefetch::next_pages(10_000, 20_000).is_empty());
+}
+
 async fn test_cache(path: &std::path::Path) -> Engram {
     Engram::builder()
         .storage(path)
@@ -281,22 +289,18 @@ async fn live_catalog_smoke_test() {
     let mut image_data = std::collections::BTreeMap::new();
     for page in pages.values() {
         for hit in &page.data.hits {
-            if let Some(url) = &hit.icon_url {
-                if let Ok(path) =
+            if let Some(url) = &hit.icon_url
+                && let Ok(path) =
                     media::image(&backend.cache, &backend.transport, &backend.media, url).await
-                {
-                    if let Some(destination) = std::env::var_os("TACHYON_EXPLORE_SNAPSHOT") {
-                        let destination =
-                            PathBuf::from(destination).parent().unwrap().join("media");
-                        tokio::fs::create_dir_all(&destination).await.unwrap();
-                        let name = std::path::Path::new(&path).file_name().unwrap();
-                        tokio::fs::copy(&path, destination.join(name))
-                            .await
-                            .unwrap();
-                        image_data
-                            .insert(url.clone(), format!("./media/{}", name.to_string_lossy()));
-                    }
-                }
+                && let Some(destination) = std::env::var_os("TACHYON_EXPLORE_SNAPSHOT")
+            {
+                let destination = PathBuf::from(destination).parent().unwrap().join("media");
+                tokio::fs::create_dir_all(&destination).await.unwrap();
+                let name = std::path::Path::new(&path).file_name().unwrap();
+                tokio::fs::copy(&path, destination.join(name))
+                    .await
+                    .unwrap();
+                image_data.insert(url.clone(), format!("./media/{}", name.to_string_lossy()));
             }
         }
     }
