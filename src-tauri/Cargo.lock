@@ -4372,8 +4372,10 @@ name = "tachyon"
 version = "0.0.13"
 dependencies = [
  "ammonia",
+ "base64 0.22.1",
  "engram-cache",
  "lol_html",
+ "png",
  "pulldown-cmark",
  "reqwest",
  "roxmltree",

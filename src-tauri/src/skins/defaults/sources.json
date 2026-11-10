@@ -1,0 +1,115 @@
+{
+  "minecraft_version": "1.21.1",
+  "client_url": "https://piston-data.mojang.com/v1/objects/30c73b1c5da787909b2f73340419fdf13b9def88/client.jar",
+  "client_sha1": "30c73b1c5da787909b2f73340419fdf13b9def88",
+  "assets": [
+    {
+      "name": "steve",
+      "model": "wide",
+      "source": "assets/minecraft/textures/entity/player/wide/steve.png",
+      "sha256": "d876e0c88f4b3de71040966ed94a614f315b888592b520b993399fd2738418d0"
+    },
+    {
+      "name": "alex",
+      "model": "wide",
+      "source": "assets/minecraft/textures/entity/player/wide/alex.png",
+      "sha256": "c8d78144f653a903d5b4118b94bd808c5522edc300bca3b674a2ffbb3a388dfd"
+    },
+    {
+      "name": "ari",
+      "model": "wide",
+      "source": "assets/minecraft/textures/entity/player/wide/ari.png",
+      "sha256": "bf0d0c2e81350637a7f5f631a27c71630b2475666017dee1a9e54a17a8021295"
+    },
+    {
+      "name": "efe",
+      "model": "wide",
+      "source": "assets/minecraft/textures/entity/player/wide/efe.png",
+      "sha256": "2479c24630848047299bd47503484926a8485675bf28961afb543a2222fd2d53"
+    },
+    {
+      "name": "kai",
+      "model": "wide",
+      "source": "assets/minecraft/textures/entity/player/wide/kai.png",
+      "sha256": "ae2f5f23c83a01761242f264eeb0b7e2e13bff0409c5191f7a97ecb608afab2f"
+    },
+    {
+      "name": "makena",
+      "model": "wide",
+      "source": "assets/minecraft/textures/entity/player/wide/makena.png",
+      "sha256": "25975682150b80a37fae76b73b7b93113ec0c11f423ac57a5442e219a2677ac9"
+    },
+    {
+      "name": "noor",
+      "model": "wide",
+      "source": "assets/minecraft/textures/entity/player/wide/noor.png",
+      "sha256": "66343b7a4d6a63af1abed71437728794a9c5d5fc666a10a3cce666e5759ac3ff"
+    },
+    {
+      "name": "sunny",
+      "model": "wide",
+      "source": "assets/minecraft/textures/entity/player/wide/sunny.png",
+      "sha256": "c1cf854c5c244a9f07e84b2faba067c20d3cb1156899ca43f85f0efc9a954270"
+    },
+    {
+      "name": "zuri",
+      "model": "wide",
+      "source": "assets/minecraft/textures/entity/player/wide/zuri.png",
+      "sha256": "573a2738cfcfd4a636e4b34cbf7f3702f230440133699c504ad26d3424ebf419"
+    },
+    {
+      "name": "steve",
+      "model": "slim",
+      "source": "assets/minecraft/textures/entity/player/slim/steve.png",
+      "sha256": "f0bab3bb71c2ae97723274c7e5a76c74f483eeb7ace0805d6f5a7e9eca4c4855"
+    },
+    {
+      "name": "alex",
+      "model": "slim",
+      "source": "assets/minecraft/textures/entity/player/slim/alex.png",
+      "sha256": "99391ed9dff9581ec88daf23b9b028adc9ac91f52889edcff1c982d0923c0cff"
+    },
+    {
+      "name": "ari",
+      "model": "slim",
+      "source": "assets/minecraft/textures/entity/player/slim/ari.png",
+      "sha256": "ecf2491fbf5d7c800ef3b65afefb42b1c50246d1ca416c22e4815b59dc6d44ab"
+    },
+    {
+      "name": "efe",
+      "model": "slim",
+      "source": "assets/minecraft/textures/entity/player/slim/efe.png",
+      "sha256": "fa3569f027caadcc17efbb1b46f8d0f2830c408cafc774e1f3bf573f4bb7c419"
+    },
+    {
+      "name": "kai",
+      "model": "slim",
+      "source": "assets/minecraft/textures/entity/player/slim/kai.png",
+      "sha256": "d238ff07273d18222255094ba5b91ea72a515c70e1a886bfd4b6b5746338265b"
+    },
+    {
+      "name": "makena",
+      "model": "slim",
+      "source": "assets/minecraft/textures/entity/player/slim/makena.png",
+      "sha256": "197307bf92fb9d3adb5808593c88e48ab152335cc4276db4127ccb82d010ca68"
+    },
+    {
+      "name": "noor",
+      "model": "slim",
+      "source": "assets/minecraft/textures/entity/player/slim/noor.png",
+      "sha256": "f83b72e1d0174a6d4b31bdaf11b775acdea8912ec7e28c59436c5237f9ca2d97"
+    },
+    {
+      "name": "sunny",
+      "model": "slim",
+      "source": "assets/minecraft/textures/entity/player/slim/sunny.png",
+      "sha256": "32ff3be1394115bbbbcb3b6aea20f0cd496338d31a5341ef73cf1df6bc963dbe"
+    },
+    {
+      "name": "zuri",
+      "model": "slim",
+      "source": "assets/minecraft/textures/entity/player/slim/zuri.png",
+      "sha256": "4f9333c958c31268fc813db3b424fb1354d81085ba0be6b112c809390847e350"
+    }
+  ]
+}

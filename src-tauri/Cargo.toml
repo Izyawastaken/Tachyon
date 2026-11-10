@@ -32,6 +32,8 @@ pulldown-cmark = "0.13"
 ammonia = "4"
 lol_html = "3"
 roxmltree = "0.21"
+png = "0.18"
+base64 = "0.22"
 
 
 
