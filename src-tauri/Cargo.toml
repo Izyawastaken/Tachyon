@@ -28,6 +28,8 @@ tokio = { version = "1", features = ["fs", "sync", "time", "macros"] }
 sha2 = "0.10"
 pulldown-cmark = "0.13"
 ammonia = "4"
+lol_html = "3"
+roxmltree = "0.21"
 
 [dev-dependencies]
 tempfile = "3"

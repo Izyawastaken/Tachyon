@@ -12,11 +12,15 @@ import { shellSpring } from "@/shell/motion";
 import { errorMessage, getProject } from "../api";
 import { CONTENT_TYPES, displayTag, fullNumber, type CatalogResult, type ProjectDetail, type ProjectHit } from "../types";
 import { ProjectImage } from "./ProjectImage";
+import { ProjectMarkdown } from "./ProjectMarkdown";
+import { ImageViewer } from "./ImageViewer";
 
 export function ProjectDetailView({ hit, onClose }: { hit: ProjectHit; onClose: () => void }) {
   const [result, setResult] = useState<CatalogResult<ProjectDetail> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
+  const [image, setImage] = useState<{ src: string; title: string } | null>(null);
+  const viewImage = (src: string, title: string) => setImage({ src, title });
   const back = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     let active = true;
@@ -29,10 +33,10 @@ export function ProjectDetailView({ hit, onClose }: { hit: ProjectHit; onClose: 
     return () => { active = false; };
   }, [hit.project_id, retry]);
   useEffect(() => {
-    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { event.preventDefault(); onClose(); } };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape" && !image) { event.preventDefault(); onClose(); } };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
-  }, [onClose]);
+  }, [onClose, image]);
   const project = result?.data.project;
   const external = async (url: string) => {
     try { if (new URL(url).protocol === "https:") await openUrl(url); }
@@ -45,7 +49,7 @@ export function ProjectDetailView({ hit, onClose }: { hit: ProjectHit; onClose: 
   return <motion.section className="project-detail" layoutId={`project-${hit.project_id}`} transition={shellSpring} role="region" aria-labelledby="project-detail-title">
     <div className="project-detail-toolbar"><button ref={back} type="button" onClick={onClose}><ArrowLeft size={17} /> Back to {CONTENT_TYPES.find(type => type.id === hit.project_type)?.label.toLowerCase() ?? "results"}</button>
       <span>{CONTENT_TYPES.find(type => type.id === hit.project_type)?.singular ?? "Project"}</span></div>
-    <div className="project-detail-scroll">
+    <div className="project-detail-scroll"><div className="project-detail-document">
       <header className="project-detail-hero">
         <motion.div layoutId={`project-icon-${hit.project_id}`}><ProjectImage url={hit.icon_url} title={hit.title} /></motion.div>
         <div><motion.h1 layout="position" id="project-detail-title">{hit.title}</motion.h1><p>by {hit.author}</p></div>
@@ -55,11 +59,11 @@ export function ProjectDetailView({ hit, onClose }: { hit: ProjectHit; onClose: 
       {result?.stale && <p className="explore-cache-notice">Showing saved project information.</p>}
       {error && <div className="explore-detail-error" role="alert"><p>{error}</p><button type="button" onClick={() => setRetry(value => value + 1)}>Retry</button></div>}
       <div className="project-detail-columns">
-        <article className="project-description">
+        <article className="project-description" onClick={link}>
           <h2>About {hit.title}</h2>
-          {result ? <div className="project-markdown" onClick={link} dangerouslySetInnerHTML={{ __html: result.data.body_html }} />
+          {result ? <ProjectMarkdown html={result.data.body_html} onImage={viewImage} />
             : !error ? <div className="project-body-loading" role="status">Loading project details…</div> : null}
-          {project && project.gallery.length > 0 && <section className="project-gallery"><h2>Gallery</h2><div>{project.gallery.map(image => <ProjectImage key={image.url} url={image.url} title={image.title ?? `${hit.title} screenshot`} gallery />)}</div></section>}
+          {project && project.gallery.length > 0 && <section className="project-gallery"><h2>Gallery</h2><div>{project.gallery.map(image => <ProjectImage key={image.url} url={image.raw_url || image.url} title={image.title ?? `${hit.title} screenshot`} gallery onOpen={viewImage} />)}</div></section>}
         </article>
         <aside className="project-info" aria-label="Project compatibility and links">
           <section><h2>Compatibility</h2><h3>Minecraft</h3><div className="project-info-tags">{(project?.game_versions ?? hit.versions).slice(-12).reverse().map(version => <span key={version}>{version}</span>)}</div>
@@ -77,5 +81,7 @@ export function ProjectDetailView({ hit, onClose }: { hit: ProjectHit; onClose: 
         </aside>
       </div>
     </div>
+    </div>
+    {image && <ImageViewer {...image} onClose={() => setImage(null)} />}
   </motion.section>;
 }

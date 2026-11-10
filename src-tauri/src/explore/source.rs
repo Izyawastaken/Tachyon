@@ -22,6 +22,7 @@ pub fn origin_error(message: impl Into<String>) -> OriginError {
 #[derive(Clone)]
 pub struct Transport {
     client: Client,
+    images: Client,
     permits: Arc<Semaphore>,
     image_slots: Arc<Semaphore>,
     retry_at: Arc<AtomicU64>,
@@ -29,23 +30,67 @@ pub struct Transport {
 
 impl Transport {
     pub fn new() -> Result<Self, OriginError> {
-        let client = Client::builder()
-            .user_agent(concat!(
-                "Izyawastaken/Tachyon/",
-                env!("CARGO_PKG_VERSION"),
-                " (https://github.com/Izyawastaken/Tachyon)"
-            ))
-            .timeout(Duration::from_secs(15))
-            .connect_timeout(Duration::from_secs(5))
-            .pool_idle_timeout(Duration::from_secs(60))
+        let builder = || {
+            Client::builder()
+                .user_agent(concat!(
+                    "Izyawastaken/Tachyon/",
+                    env!("CARGO_PKG_VERSION"),
+                    " (https://github.com/Izyawastaken/Tachyon)"
+                ))
+                .timeout(Duration::from_secs(15))
+                .connect_timeout(Duration::from_secs(5))
+                .pool_idle_timeout(Duration::from_secs(60))
+        };
+        let client = builder()
             .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .map_err(|e| origin_error(e.to_string()))?;
+        // Descriptions can reference creator-hosted banners. Validate DNS at
+        // connection time, including every redirect, to keep private hosts out.
+        let images = builder()
+            .https_only(true)
+            .no_proxy()
+            .dns_resolver(Arc::new(super::media::PublicImageDns))
+            .redirect(reqwest::redirect::Policy::custom(|attempt| {
+                if attempt.previous().len() >= 3
+                    || super::media::media_url(attempt.url().as_str()).is_err()
+                {
+                    attempt.error("Unsupported image redirect")
+                } else {
+                    attempt.follow()
+                }
+            }))
             .build()
             .map_err(|e| origin_error(e.to_string()))?;
         Ok(Self {
             client,
+            images,
             permits: Arc::new(Semaphore::new(6)),
             image_slots: Arc::new(Semaphore::new(2)),
             retry_at: Arc::new(AtomicU64::new(0)),
+        })
+    }
+
+    pub async fn get_image(&self, url: Url) -> Result<WireResponse, OriginError> {
+        let _permit = self
+            .permits
+            .acquire()
+            .await
+            .map_err(|_| origin_error("Catalog is closing."))?;
+        let response = self
+            .images
+            .get(url)
+            .send()
+            .await
+            .map_err(|_| origin_error("Could not load the project image."))?;
+        let status = response.status();
+        if status != StatusCode::NOT_FOUND && !status.is_success() {
+            return Err(origin_error("The project image is unavailable."));
+        }
+        Ok(WireResponse {
+            status,
+            metadata: ValidationMetadata::default(),
+            bytes: bounded_body(response, 32 * 1024 * 1024).await?,
         })
     }
 

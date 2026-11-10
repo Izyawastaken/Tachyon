@@ -18,6 +18,8 @@ mockIPC(async (command, args) => {
     if (input.query) result.data.hits = result.data.hits.filter(hit => (hit.title + ' ' + hit.description).toLowerCase().includes(input.query.toLowerCase()));
     if (input.versions.length) result.data.hits = result.data.hits.filter(hit => hit.versions.includes(input.versions[0]));
     if (input.categories.length) result.data.hits = result.data.hits.filter(hit => hit.categories.includes(input.categories[0]));
+    result.data.hits = result.data.hits.slice(0, 12);
+    result.data.limit = 12;
     result.data.offset = input.offset;
     return result;
   }
@@ -27,10 +29,11 @@ mockIPC(async (command, args) => {
     return '/tests/generated/' + image.replace('./', '');
   }
   if (command === 'explore_project') {
-    if (args.id !== snapshot.project.data.project.id) throw new Error('Only the first mod detail was captured by the Rust smoke test');
+    if (args.id === snapshot.visual_project?.data.project.id) return snapshot.visual_project;
+    if (args.id !== snapshot.project.data.project.id) throw new Error('This project detail was not captured by the Rust smoke test');
     return snapshot.project;
   }
-  if (command === 'plugin:app|version') return '0.0.11';
+  if (command === 'plugin:app|version') return '0.0.12';
   if (command === 'plugin:updater|check') return null;
 }, {shouldMockEvents:true});
 window.__TAURI_INTERNALS__.convertFileSrc = path => path;

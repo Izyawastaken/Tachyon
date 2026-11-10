@@ -1,3 +1,4 @@
+mod markdown;
 mod media;
 mod models;
 mod prefetch;
@@ -24,6 +25,7 @@ use std::{
 use tauri::{Emitter, Manager, State};
 use tokio::sync::{OnceCell, Semaphore};
 
+const PAGE_SIZE: u32 = 12;
 const API: &str = "https://api.modrinth.com/v2/";
 #[derive(Clone, Serialize)]
 struct CatalogRefresh {
@@ -98,7 +100,7 @@ impl Backend {
             )
             .append_pair("index", &input.sort)
             .append_pair("offset", &input.offset.to_string())
-            .append_pair("limit", "24");
+            .append_pair("limit", &PAGE_SIZE.to_string());
         Ok(url)
     }
 
@@ -224,17 +226,17 @@ impl Backend {
         let result: CatalogResult<Project> = self
             .json(
                 Url::parse(&format!("{API}project/{id}")).map_err(|e| e.to_string())?,
-                "modrinth-project@1",
+                "modrinth-project@2",
                 900,
                 7 * 86400,
             )
             .await?;
         let key = CacheKey::<String>::new(
             format!(
-                "explore/markdown/{}",
+                "explore/markdown/v2/{}",
                 media::digest(result.data.body.as_bytes())
             ),
-            "safe-project-html@1",
+            "safe-project-html@2",
         );
         let body_html =
             if let Some(html) = self.cache.get_key(&key).await.map_err(|e| e.to_string())? {
@@ -260,23 +262,7 @@ impl Backend {
     }
 }
 
-fn render_markdown(markdown: &str) -> String {
-    let options =
-        pulldown_cmark::Options::ENABLE_TABLES | pulldown_cmark::Options::ENABLE_STRIKETHROUGH;
-    let mut html = String::new();
-    pulldown_cmark::html::push_html(
-        &mut html,
-        pulldown_cmark::Parser::new_ext(markdown, options),
-    );
-    // Gallery images use the Rust media pipeline. Inline remote images, scripts,
-    // styles and embedded documents must never start WebView network requests.
-    ammonia::Builder::default()
-        .rm_tags(&["img"])
-        .url_schemes(["https"].into_iter().collect())
-        .url_relative(ammonia::UrlRelative::Deny)
-        .clean(&html)
-        .to_string()
-}
+use markdown::render_markdown;
 
 #[tauri::command]
 pub async fn explore_search(

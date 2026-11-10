@@ -7,6 +7,7 @@ use reqwest::{StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
+    net::IpAddr,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -24,17 +25,65 @@ pub fn media_url(value: &str) -> Result<Url, String> {
     }
     let url = Url::parse(value).map_err(|_| "Invalid image address.")?;
     if url.scheme() != "https"
-        || url.host_str() != Some("cdn.modrinth.com")
         || url.port().is_some()
         || !url.username().is_empty()
         || url.password().is_some()
-        || !url.path().starts_with("/data/")
-        || url.query().is_some()
         || url.fragment().is_some()
     {
-        return Err("Only Modrinth catalog images are supported.".into());
+        return Err("Unsupported project image address.".into());
+    }
+    if url
+        .host_str()
+        .is_none_or(|host| !host.contains('.') || host.ends_with(".local"))
+        || url
+            .host_str()
+            .and_then(|host| host.parse::<IpAddr>().ok())
+            .is_some()
+    {
+        return Err("Project images must use a public HTTPS host.".into());
     }
     Ok(url)
+}
+
+pub(super) fn public_address(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(ip) => {
+            let [a, b, c, _] = ip.octets();
+            !(matches!(a, 0 | 10 | 127 | 224..=255)
+                || (a == 100 && (64..=127).contains(&b))
+                || (a == 169 && b == 254)
+                || (a == 172 && (16..=31).contains(&b))
+                || (a == 192 && (b == 168 || (b == 0 && matches!(c, 0 | 2))))
+                || (a == 198 && (b == 18 || b == 19 || (b == 51 && c == 100)))
+                || (a == 203 && b == 0 && c == 113))
+        }
+        IpAddr::V6(ip) => {
+            if let Some(ip) = ip.to_ipv4_mapped() {
+                return public_address(IpAddr::V4(ip));
+            }
+            let parts = ip.segments();
+            parts[0] & 0xe000 == 0x2000
+                && !(parts[0] == 0x2001 && (parts[1] < 0x200 || parts[1] == 0xdb8))
+                && parts[0] != 0x2002 // No 6to4 tunnels to private IPv4 addresses.
+        }
+    }
+}
+
+pub(super) struct PublicImageDns;
+impl reqwest::dns::Resolve for PublicImageDns {
+    fn resolve(&self, name: reqwest::dns::Name) -> reqwest::dns::Resolving {
+        Box::pin(async move {
+            let addresses: Vec<_> = tokio::net::lookup_host((name.as_str(), 0)).await?.collect();
+            if addresses.is_empty()
+                || addresses
+                    .iter()
+                    .any(|address| !public_address(address.ip()))
+            {
+                return Err(origin_error("Project images cannot access local networks.").into());
+            }
+            Ok(Box::new(addresses.into_iter()) as reqwest::dns::Addrs)
+        })
+    }
 }
 
 pub fn digest(value: &[u8]) -> String {
@@ -67,7 +116,7 @@ pub async fn image(
         .resolve(
             &key,
             ResolveOptions {
-                ttl: Some(Duration::from_secs(7 * 86400)),
+                ttl: Some(Duration::from_secs(86400)),
                 ..Default::default()
             },
             &source,
@@ -90,7 +139,8 @@ impl Source<MediaRecord> for MediaSource {
         &'a self,
         _: ValidationRequest<'a, MediaRecord>,
     ) -> SourceFuture<'a, Result<ValidationOutcome, OriginError>> {
-        // CDN paths are content-addressed; immutable images need no origin validation.
+        // Media is retained for one day. Creator-hosted URLs may change; expiry
+        // refreshes those bytes without validating immutable CDN images on hover.
         Box::pin(async { Ok(ValidationOutcome::Fresh { validation: None }) })
     }
     fn retrieve<'a>(
@@ -101,16 +151,14 @@ impl Source<MediaRecord> for MediaSource {
             // Images and lookahead cannot occupy all six origin slots, leaving
             // capacity for interactive searches and project-detail requests.
             let _image_permit = self.transport.image_permit().await?;
-            let wire = self
-                .transport
-                .get(self.url.clone(), None, 12 * 1024 * 1024)
-                .await?;
+            let wire = self.transport.get_image(self.url.clone()).await?;
             if wire.status == StatusCode::NOT_FOUND {
                 return Ok(RetrievalOutcome::NotFound);
             }
             // Validate the representation itself: CDN MIME labels and suffixes
             // are not always consistent with the delivered raster format.
             let ext = raster_extension(&wire.bytes)
+                .or_else(|| svg_image(&wire.bytes).then_some("svg"))
                 .ok_or_else(|| origin_error("This image format cannot be displayed safely."))?;
             let path = self.root.join(format!("{}.{}", self.id, ext));
             let temporary = path.with_extension("part");
@@ -124,6 +172,39 @@ impl Source<MediaRecord> for MediaSource {
             }))
         })
     }
+}
+
+// SVGs are served only through <img>, never embedded as active documents.
+// Reject active/external content as well, so cached badges remain self-contained.
+pub(super) fn svg_image(bytes: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(bytes) else {
+        return false;
+    };
+    let Ok(document) = roxmltree::Document::parse(text) else {
+        return false;
+    };
+    if document.root_element().tag_name().name() != "svg" {
+        return false;
+    }
+    document
+        .descendants()
+        .filter(|node| node.is_element())
+        .all(|node| {
+            !matches!(
+                node.tag_name().name(),
+                "script" | "foreignObject" | "iframe" | "image" | "style"
+            ) && node.attributes().all(|attr| {
+                let value = attr.value().to_ascii_lowercase();
+                !attr.name().to_ascii_lowercase().starts_with("on")
+                    && (!matches!(attr.name(), "href" | "src") || value.starts_with('#'))
+                    && (!value.contains("url(")
+                        || !value
+                            .replace(' ', "")
+                            .split("url(")
+                            .skip(1)
+                            .any(|part| !part.starts_with('#')))
+            })
+        })
 }
 
 pub async fn prune(root: &Path) -> std::io::Result<()> {

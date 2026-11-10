@@ -13,7 +13,7 @@ import { useHoverDrawer } from "./hooks/useHoverDrawer";
 import { FilterDrawer } from "./components/FilterDrawer";
 import { TypeSelector } from "./components/TypeSelector";
 import { ProjectCard } from "./components/ProjectCard";
-import { CONTENT_TYPES, fullNumber, INITIAL_SEARCH, type SearchInput, type ProjectHit } from "./types";
+import { CONTENT_TYPES, fullNumber, INITIAL_SEARCH, PAGE_SIZE, type SearchInput, type ProjectHit } from "./types";
 import "./ExplorePage.css";
 
 export default function ExplorePage({ sidebarOpen }: { sidebarOpen: boolean }) {
@@ -58,9 +58,9 @@ export default function ExplorePage({ sidebarOpen }: { sidebarOpen: boolean }) {
         </div>
         <div className="explore-pagination">
           <span>Hold <kbd>Space</kbd> over a project for Quick Look</span>
-          <div><button type="button" aria-label="Previous page" disabled={catalog.loading || input.offset === 0} onClick={() => change({ offset: Math.max(0, input.offset - 24) })}><ArrowLeft size={16} /></button>
-            <span>{page ? fullNumber.format(page.offset / 24 + 1) : "1"}</span>
-            <button type="button" aria-label="Next page" disabled={catalog.loading || !page || page.offset + page.limit >= page.total_hits || input.offset >= 10_000 - 24} onClick={() => change({ offset: input.offset + 24 })}><ArrowRight size={16} /></button></div>
+          <div><button type="button" aria-label="Previous page" disabled={catalog.loading || input.offset === 0} onClick={() => change({ offset: Math.max(0, input.offset - PAGE_SIZE) })}><ArrowLeft size={16} /></button>
+            <span>{page ? fullNumber.format(page.offset / page.limit + 1) : "1"}</span>
+            <button type="button" aria-label="Next page" disabled={catalog.loading || !page || page.offset + page.limit >= page.total_hits || input.offset >= 10_000 - PAGE_SIZE} onClick={() => change({ offset: input.offset + PAGE_SIZE })}><ArrowRight size={16} /></button></div>
         </div>
       </section>
       <AnimatePresence onExitComplete={() => origin.current?.focus({ preventScroll: true })}>

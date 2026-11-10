@@ -17,9 +17,9 @@ struct Record {
 
 #[test]
 fn lookahead_is_two_pages_and_never_runs_past_the_catalog() {
-    assert_eq!(super::prefetch::next_pages(0, 200), vec![24, 48]);
-    assert_eq!(super::prefetch::next_pages(24, 60), vec![48]);
-    assert!(super::prefetch::next_pages(48, 60).is_empty());
+    assert_eq!(super::prefetch::next_pages(0, 200), vec![12, 24]);
+    assert_eq!(super::prefetch::next_pages(12, 30), vec![24]);
+    assert!(super::prefetch::next_pages(24, 30).is_empty());
     assert!(super::prefetch::next_pages(10_000, 20_000).is_empty());
 }
 
@@ -74,9 +74,7 @@ fn media_rejects_non_catalog_addresses() {
     assert!(media::media_url("https://cdn.modrinth.com/data/A/icon.png").is_ok());
     for url in [
         "http://cdn.modrinth.com/data/a.png",
-        "https://cdn.modrinth.com.evil.test/data/a.png",
         "https://user@cdn.modrinth.com/data/a.png",
-        "https://cdn.modrinth.com/other/a.png",
         "file:///etc/passwd",
         "https://127.0.0.1/data/a.png",
     ] {
@@ -91,14 +89,7 @@ fn markdown_cannot_start_webview_network_requests_or_scripts() {
     );
     assert!(html.contains("<h1>Hello</h1>"));
     assert!(html.contains("<strong>Readable</strong>"));
-    for forbidden in [
-        "<script",
-        "<iframe",
-        "<img",
-        "onerror",
-        "style=",
-        "evil.test",
-    ] {
+    for forbidden in ["<script", "<iframe", " src=", "onerror", "style="] {
         assert!(!html.contains(forbidden), "{html}");
     }
 }
@@ -260,6 +251,8 @@ async fn live_catalog_smoke_test() {
             .await
             .unwrap();
         assert!(!page.data.hits.is_empty(), "{kind}");
+        assert_eq!(page.data.limit, PAGE_SIZE);
+        assert!(page.data.hits.len() <= PAGE_SIZE as usize);
         pages.insert(kind, page);
     }
     let hit = &pages["mod"].data.hits[0];
@@ -292,26 +285,58 @@ async fn live_catalog_smoke_test() {
         )
         .await
         .unwrap();
+    let visual_project = backend
+        .project(&pages["shader"].data.hits[0].project_id)
+        .await
+        .unwrap();
+    let mut image_urls: Vec<String> = pages
+        .values()
+        .flat_map(|page| page.data.hits.iter().filter_map(|hit| hit.icon_url.clone()))
+        .collect();
+    for detail in [&project, &visual_project] {
+        lol_html::rewrite_str(
+            &detail.data.body_html,
+            lol_html::RewriteStrSettings::new().append_element_content_handler(lol_html::element!(
+                "img[data-image-url]",
+                |image| {
+                    if let Some(url) = image.get_attribute("data-image-url") {
+                        image_urls.push(url);
+                    }
+                    Ok(())
+                }
+            )),
+        )
+        .unwrap();
+        image_urls.extend(
+            detail
+                .data
+                .project
+                .gallery
+                .iter()
+                .take(3)
+                .map(|image| image.raw_url.clone().unwrap_or_else(|| image.url.clone())),
+        );
+    }
+    image_urls.sort();
+    image_urls.dedup();
     let mut image_data = std::collections::BTreeMap::new();
-    for page in pages.values() {
-        for hit in &page.data.hits {
-            if let Some(url) = &hit.icon_url
-                && let Ok(path) =
-                    media::image(&backend.cache, &backend.transport, &backend.media, url).await
-                && let Some(destination) = std::env::var_os("TACHYON_EXPLORE_SNAPSHOT")
-            {
-                let destination = PathBuf::from(destination).parent().unwrap().join("media");
-                tokio::fs::create_dir_all(&destination).await.unwrap();
-                let name = std::path::Path::new(&path).file_name().unwrap();
-                tokio::fs::copy(&path, destination.join(name))
-                    .await
-                    .unwrap();
-                image_data.insert(url.clone(), format!("./media/{}", name.to_string_lossy()));
-            }
+    for url in &image_urls {
+        if media::media_url(url).is_ok()
+            && let Ok(path) =
+                media::image(&backend.cache, &backend.transport, &backend.media, url).await
+            && let Some(destination) = std::env::var_os("TACHYON_EXPLORE_SNAPSHOT")
+        {
+            let destination = PathBuf::from(destination).parent().unwrap().join("media");
+            tokio::fs::create_dir_all(&destination).await.unwrap();
+            let name = std::path::Path::new(&path).file_name().unwrap();
+            tokio::fs::copy(&path, destination.join(name))
+                .await
+                .unwrap();
+            image_data.insert(url.clone(), format!("./media/{}", name.to_string_lossy()));
         }
     }
     if let Some(path) = std::env::var_os("TACHYON_EXPLORE_SNAPSHOT") {
-        let snapshot = serde_json::json!({ "pages": pages, "project": project, "filters": { "data": { "versions": versions.data, "loaders": loaders.data, "categories": categories.data }, "stale": false }, "images": image_data });
+        let snapshot = serde_json::json!({ "pages": pages, "project": project, "visual_project": visual_project, "filters": { "data": { "versions": versions.data, "loaders": loaders.data, "categories": categories.data }, "stale": false }, "images": image_data });
         tokio::fs::write(path, serde_json::to_vec(&snapshot).unwrap())
             .await
             .unwrap();
@@ -330,4 +355,75 @@ fn raster_format_uses_bytes_not_cdn_suffixes_or_headers() {
         None
     );
     assert_eq!(media::raster_extension(b"0000ftypisom"), None);
+}
+
+#[test]
+fn markdown_preserves_images_and_rich_content_without_remote_sources() {
+    let html = render_markdown(
+        "# Title\n\n![Banner](https://cdn.modrinth.com/data/cached_images/banner.png)\n\n~~old~~\n\n- [x] Done\n\n| A | B |\n|---|---|\n| One | Two |\n\n<details><summary>More</summary><p align=\"center\"><img src=\"https://raw.githubusercontent.com/owner/repo/main/banner.png\" width=\"640\" onerror=\"alert(1)\"></p></details>",
+    );
+    assert!(
+        html.contains("data-image-url=\"https://cdn.modrinth.com/data/cached_images/banner.png\""),
+        "{html}"
+    );
+    assert!(html.contains(
+        "data-image-url=\"https://raw.githubusercontent.com/owner/repo/main/banner.png\""
+    ));
+    for expected in [
+        "<table>",
+        "<del>old</del>",
+        "<details>",
+        "<summary>",
+        "type=\"checkbox\"",
+        "disabled",
+        "align=\"center\"",
+    ] {
+        assert!(html.contains(expected), "{expected}: {html}");
+    }
+    assert!(!html.contains(" src="));
+    assert!(!html.contains("onerror"));
+}
+
+#[test]
+fn media_accepts_originals_and_self_contained_svg_badges() {
+    assert!(media::media_url("https://cdn-raw.modrinth.com/data/A/gallery/original.png").is_ok());
+    assert!(
+        media::media_url("https://img.shields.io/badge/fabric-supported-green?style=flat").is_ok()
+    );
+    assert!(media::svg_image(br##"<svg xmlns="http://www.w3.org/2000/svg"><path fill="url(#gradient)" d="M0 0"/></svg>"##));
+    for svg in [
+        "<svg><script>alert(1)</script></svg>",
+        "<svg onload='alert(1)'/>",
+        "<svg><image href='https://example.com/a.png'/></svg>",
+        "<svg><path fill='url(https://example.com)'/></svg>",
+        "<!DOCTYPE svg [<!ENTITY x 'boom'>]><svg>&x;</svg>",
+    ] {
+        assert!(!media::svg_image(svg.as_bytes()), "{svg}");
+    }
+}
+
+#[test]
+fn creator_images_cannot_connect_to_private_or_reserved_addresses() {
+    for ip in [
+        "127.0.0.1",
+        "10.0.0.1",
+        "169.254.169.254",
+        "100.64.0.1",
+        "192.168.1.1",
+        "172.16.0.1",
+        "0.0.0.0",
+        "224.0.0.1",
+        "::1",
+        "fc00::1",
+        "fe80::1",
+        "::ffff:127.0.0.1",
+        "2001:db8::1",
+        "2002:7f00:1::1",
+    ] {
+        assert!(!media::public_address(ip.parse().unwrap()), "{ip}");
+    }
+    for ip in ["1.1.1.1", "104.18.8.171", "2606:4700:4700::1111"] {
+        assert!(media::public_address(ip.parse().unwrap()), "{ip}");
+    }
+    assert!(media::media_url("https://www.complementary.dev/assets/banner.png").is_ok());
 }

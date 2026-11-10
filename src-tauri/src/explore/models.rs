@@ -134,6 +134,7 @@ pub struct License {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GalleryImage {
     pub url: String,
+    pub raw_url: Option<String>,
     pub featured: bool,
     pub title: Option<String>,
 }

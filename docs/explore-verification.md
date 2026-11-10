@@ -22,7 +22,7 @@
 
 ## Cache and request policy
 
-- One asynchronous Engram instance, one pooled HTTP client, stable typed schema tags.
+- One asynchronous Engram instance, pooled catalog and media HTTP clients, stable typed schema tags.
 - 48 MiB weighted L1; persistent SQLite WAL L2 with three connections and NORMAL durability for reproducible cache data.
 - ZSTD level 1, 1 KiB compression threshold, and compression only when smaller. Raster bytes remain in local files rather than being copied into L1 or recompressed.
 - Default first page warms at launch. An L2 hit is promoted to L1 before revalidation; the first eight icons are warmed without delaying app startup.
@@ -30,8 +30,8 @@
 - Six total origin requests, at most two image retrievals and two lookahead workers. Search typing is debounced before IPC, and obsolete UI responses are ignored.
 - Cached search pages return immediately. Rust uses Engram background V1/R1 revalidation and emits refreshed results; the UI guards against an older IPC response overwriting a newer refresh event.
 - Conditional ETag/Last-Modified validation retains validators omitted by 304 responses. A changed 200 body is handed from V1 to R1 rather than downloaded again.
-- Freshness intervals: search 2 minutes, projects 15 minutes, filter metadata 6 hours. Persistent retention: search 24 hours, projects/tags/media metadata 7 days, with expiry cleanup every 30 minutes.
-- Media has a periodic 256 MiB disk budget. Old paths are repaired through Engram on the next request if a file was pruned. Responses are size bounded, origins restricted, redirects disabled and raster signatures checked.
+- Freshness intervals: search 2 minutes, projects 15 minutes, filter metadata 6 hours. Persistent retention: search 24 hours, projects/tags 7 days, media metadata 24 hours, with expiry cleanup every 30 minutes.
+- Media has a periodic 256 MiB disk budget. Old paths are repaired through Engram on the next request if a file was pruned. Image responses are bounded to 32 MiB, use public HTTPS hosts with connection-time DNS validation and at most three validated redirects, and have raster signatures or self-contained SVG XML checked. API redirects remain disabled.
 - Origin failures do not overwrite valid cached values. Rate-limit Retry-After is respected. Quick Look uses the existing search summary and creates no detail request.
 
 ## Backend/UI boundary
@@ -52,3 +52,13 @@ pnpm dev
 Open `/tests/explore-preview.html` on the local development server. The ordinary app has no browser/network fallback; use the desktop build for real catalog operations. Restart the desktop development process after Rust changes.
 
 Catalog installation and instance targeting are intentionally outside this browsing feature. No release tag is created by this merge.
+
+
+## Explore readability and description follow-up
+
+- Pages contain 12 projects; the grid caps at four broad columns with 24px gaps. Pagination and two-page Rust lookahead use the new size.
+- Rust retains sanitized Markdown tables, task lists, collapsible sections, inline images and author alignment. Inline image URLs are inert data attributes until the lazy media pipeline returns a local asset path; no browser remote fetch is introduced.
+- Creator-hosted HTTPS banners and badges use a separate pooled client with DNS restrictions against private/reserved addresses, including redirects. Image concurrency remains two within the shared six-request budget. SVG images are XML checked and displayed only in image contexts.
+- Gallery images prefer Modrinth `raw_url` originals. Click or keyboard activation opens a modal viewer with fit and original-pixel-size modes; Escape dismisses the image before returning from project details. Unloaded gallery cells reserve space for effective lazy loading.
+- Rendering and project-record cache namespaces were advanced so persisted descriptions with removed images cannot mask the fix.
+- Validation: 13 deterministic Rust tests, Clippy with warnings denied, production build, and explicit live Modrinth smoke test passed. The live fixture included Complementary creator-hosted banners and original gallery assets up to 5 MiB. Browser verification confirmed a local 1968×1080 inline image fit without cropping, 1:1 zoom at 1968×1080, and Escape focus restoration to the image within project details.

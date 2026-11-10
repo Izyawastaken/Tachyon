@@ -1,4 +1,4 @@
-use super::{Backend, models::SearchInput};
+use super::{Backend, PAGE_SIZE, models::SearchInput};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::{sync::Mutex, task::JoinHandle};
@@ -15,10 +15,13 @@ struct WindowState {
 }
 
 pub fn next_pages(offset: u32, total: u32) -> Vec<u32> {
-    [offset.saturating_add(24), offset.saturating_add(48)]
-        .into_iter()
-        .filter(|offset| *offset < total && *offset <= 10_000)
-        .collect()
+    [
+        offset.saturating_add(PAGE_SIZE),
+        offset.saturating_add(2 * PAGE_SIZE),
+    ]
+    .into_iter()
+    .filter(|offset| *offset < total && *offset <= 10_000)
+    .collect()
 }
 
 impl Window {

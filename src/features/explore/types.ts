@@ -39,7 +39,7 @@ export interface Project {
   categories: string[]; game_versions: string[]; loaders: string[];
   license: { id: string; name: string };
   source_url: string | null; issues_url: string | null; wiki_url: string | null;
-  gallery: { url: string; featured: boolean; title: string | null }[];
+  gallery: { url: string; raw_url?: string | null; featured: boolean; title: string | null }[];
 }
 export interface ProjectDetail { project: Project; body_html: string }
 
@@ -50,6 +50,7 @@ export const CONTENT_TYPES: { id: ContentKind; label: string; singular: string }
   { id: "resourcepack", label: "Resource packs", singular: "Resource pack" },
   { id: "datapack", label: "Data packs", singular: "Data pack" },
 ];
+export const PAGE_SIZE = 12;
 export const INITIAL_SEARCH: SearchInput = { query: "", kind: "mod", versions: [], loaders: [], categories: [], environment: "", sort: "relevance", offset: 0 };
 export const compactNumber = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 export const fullNumber = new Intl.NumberFormat("en");
