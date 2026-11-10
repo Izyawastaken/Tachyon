@@ -14,7 +14,7 @@ Branch: `codex/features/explore`, based on `exp-dev`. Work sequentially and merg
 ## Tasks
 
 - [x] 1. Inspect shell, installed Engram 0.2.5 source/docs and current Modrinth API. Define architecture.
-- [ ] 2. Rust catalog and media service, Tauri commands, Engram V1/R1 integration and backend tests.
+- [x] 2. Rust catalog and media service, Tauri commands, Engram V1/R1 integration and backend tests.
 - [ ] 3. Explore routing, search/grid, top filter drawer and bottom type selector.
 - [ ] 4. Shared card/detail spring morph, hold-Space Quick Look, accessible interaction cleanup.
 - [ ] 5. Backend tests, actual-origin smoke test, UI verification, production build, then merge into exp-dev.
@@ -45,3 +45,5 @@ Branch: `codex/features/explore`, based on `exp-dev`. Work sequentially and merg
 - https://docs.rs/pulldown-cmark/latest/pulldown_cmark/
 - https://docs.rs/ammonia/latest/ammonia/
 - https://v2.tauri.app/reference/javascript/api/namespacecore/#convertfilesrc
+
+Task 2 verification: 6 deterministic Rust tests passed; live Modrinth smoke test passed for all five content types, project details, metadata and local image retrieval.
