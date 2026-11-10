@@ -20,6 +20,7 @@ import {
   useIconHover,
 } from "@/core/components/ui/icons";
 import { cn } from "@/core/lib/utils";
+import { UpdateIndicator } from "./UpdateIndicator";
 
 export interface NavItem {
   id: string;
@@ -460,9 +461,13 @@ export function Sidebar({
             Login
           </span>
         </button>
+
+        {/* Update status indicator */}
+        <UpdateIndicator open={open} />
       </div>
     </aside>
   );
 }
 
 export default Sidebar;
+

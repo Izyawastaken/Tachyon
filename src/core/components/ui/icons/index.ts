@@ -23,3 +23,4 @@ export {
 export { BookshelfIcon as BookOpenIcon } from "./BookshelfIcon";
 
 export { useIconHover } from "@animateicons/react";
+

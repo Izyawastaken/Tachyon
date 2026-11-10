@@ -21,3 +21,4 @@ export const iconSpringTransition: Transition = {
   stiffness: 400,
   damping: 25,
 };
+
