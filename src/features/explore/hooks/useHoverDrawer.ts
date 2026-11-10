@@ -1,4 +1,4 @@
-import { useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent } from "react";
+import { useCallback, useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent } from "react";
 
 export function useHoverDrawer() {
   const [hovered, setHovered] = useState(false);
@@ -6,7 +6,7 @@ export function useHoverDrawer() {
   const [pinned, setPinned] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const open = hovered || keyboard || pinned;
-  const close = () => { setHovered(false); setKeyboard(false); setPinned(false); };
+  const close = useCallback(() => { setHovered(false); setKeyboard(false); setPinned(false); }, []);
   return {
     open, pinned, toggleRef, close,
     toggle: () => setPinned(value => !value),

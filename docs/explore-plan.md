@@ -17,7 +17,7 @@ Branch: `codex/features/explore`, based on `exp-dev`. Work sequentially and merg
 - [x] 2. Rust catalog and media service, Tauri commands, Engram V1/R1 integration and backend tests.
 - [x] 2b. Launch L2-to-L1 warm-up, two-page lookahead, stale-while-revalidate events and obsolete-prefetch cancellation.
 - [x] 3. Explore routing, search/grid, top filter drawer and bottom type selector.
-- [ ] 4. Shared card/detail spring morph, hold-Space Quick Look, accessible interaction cleanup.
+- [x] 4. Shared card/detail spring morph, hold-Space Quick Look, accessible interaction cleanup.
 - [ ] 5. Backend tests, actual-origin smoke test, UI verification, production build, then merge into exp-dev.
 
 ## Backend policy
@@ -50,3 +50,5 @@ Branch: `codex/features/explore`, based on `exp-dev`. Work sequentially and merg
 Task 2 verification: 6 deterministic Rust tests passed; live Modrinth smoke test passed for all five content types, project details, metadata and local image retrieval.
 
 Additional requested optimization: Rust launch warm-up promotes the default first page from L2 to L1; Explore requests prefetch the next two pages with bounded background concurrency and cancellation of obsolete query families.
+
+Task 4 interaction checks: holding Space expands a card to 613×448px (2×2 cells), releasing collapses it, click opens its real Rust-captured Markdown detail, and Escape reverses the morph and restores focus to the originating card.

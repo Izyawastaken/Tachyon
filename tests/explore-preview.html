@@ -32,7 +32,14 @@ mockIPC(async (command, args) => {
   }
   if (command === 'plugin:app|version') return '0.0.11';
   if (command === 'plugin:updater|check') return null;
-});
+}, {shouldMockEvents:true});
 window.__TAURI_INTERNALS__.convertFileSrc = path => path;
+new MutationObserver(() => {
+  const card = document.querySelector('.project-card-quick');
+  if (card) {
+    document.body.dataset.quickLookSeen = card.dataset.projectCard;
+    document.body.dataset.quickLookFootprint = `${card.offsetWidth}x${card.offsetHeight}`;
+  }
+}).observe(document.getElementById('root'), {subtree:true,attributes:true,attributeFilter:['class']});
 createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null, React.createElement(App)));
 </script></body></html>
