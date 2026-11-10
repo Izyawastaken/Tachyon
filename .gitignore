@@ -54,3 +54,7 @@ pnpm-debug.log*
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Old codebase code
+oldcodebase
+
