@@ -85,11 +85,21 @@ export function useUpdater(options: UseUpdaterOptions = {}): UseUpdaterReturn {
         return null;
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
+      const rawMessage = err instanceof Error ? err.message : String(err);
+      let userFriendlyMessage = rawMessage;
+
+      if (
+        rawMessage.includes("Could not fetch a valid release JSON") ||
+        rawMessage.includes("404")
+      ) {
+        userFriendlyMessage =
+          "No release published on GitHub yet. Once you publish a release or push a version tag, updates will be discovered here.";
+      }
+
+      setError(userFriendlyMessage);
       setStatus("error");
       if (!silent) {
-        console.error("Failed to check for updates:", err);
+        console.warn("Update check info:", rawMessage);
       }
       return null;
     }
