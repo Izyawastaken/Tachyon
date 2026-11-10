@@ -15,7 +15,7 @@ Branch: `codex/features/explore`, based on `exp-dev`. Work sequentially and merg
 
 - [x] 1. Inspect shell, installed Engram 0.2.5 source/docs and current Modrinth API. Define architecture.
 - [x] 2. Rust catalog and media service, Tauri commands, Engram V1/R1 integration and backend tests.
-- [ ] 3. Explore routing, search/grid, top filter drawer and bottom type selector.
+- [x] 3. Explore routing, search/grid, top filter drawer and bottom type selector.
 - [ ] 4. Shared card/detail spring morph, hold-Space Quick Look, accessible interaction cleanup.
 - [ ] 5. Backend tests, actual-origin smoke test, UI verification, production build, then merge into exp-dev.
 
@@ -47,3 +47,5 @@ Branch: `codex/features/explore`, based on `exp-dev`. Work sequentially and merg
 - https://v2.tauri.app/reference/javascript/api/namespacecore/#convertfilesrc
 
 Task 2 verification: 6 deterministic Rust tests passed; live Modrinth smoke test passed for all five content types, project details, metadata and local image retrieval.
+
+Additional requested optimization: Rust launch warm-up promotes the default first page from L2 to L1; Explore requests prefetch the next two pages with bounded background concurrency and cancellation of obsolete query families.
