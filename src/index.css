@@ -13,13 +13,13 @@
   --color-semantic-error: var(--semantic-error);
   --color-semantic-info: var(--semantic-info);
 
-  --radius-container: var(--radius-container);
-  --radius-card: var(--radius-card);
-  --radius-nested: var(--radius-nested);
-  --radius-button: var(--radius-button);
-  --radius-input: var(--radius-input);
-  --radius-control: var(--radius-control);
-  --radius-pill: var(--radius-pill);
+  --radius-container: 24px;
+  --radius-card: 16px;
+  --radius-nested: 12px;
+  --radius-button: 12px;
+  --radius-input: 10px;
+  --radius-control: 8px;
+  --radius-pill: 999px;
 
   --text-display: var(--font-display);
   --text-h1: var(--font-h1);
@@ -36,12 +36,12 @@
   --spacing-space-xl: var(--space-xl);
   --spacing-space-2xl: var(--space-2xl);
 
-  --scale-pressed: var(--scale-pressed);
-  --scale-hover: var(--scale-hover);
+  --scale-pressed: 0.98;
+  --scale-hover: 1.01;
 
-  --ease-standard: var(--ease-standard);
-  --ease-enter: var(--ease-enter);
-  --ease-exit: var(--ease-exit);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
   --duration-fast: var(--motion-fast);
   --duration-normal: var(--motion-normal);

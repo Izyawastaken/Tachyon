@@ -4,21 +4,21 @@ import {
   type ComponentType,
   type MouseEvent,
 } from "react";
-import {
-  BoxesIcon,
-  SearchIcon,
-  HouseIcon,
-  CompassIcon,
-  BookshelfIcon,
-  PaletteIcon,
-  CameraIcon,
-  FolderIcon,
-  PlusIcon,
-  ChevronRightIcon,
-  SettingsIcon,
-  LogInIcon,
-  useIconHover,
-} from "@/core/components/ui/icons";
+import { BoxesIcon } from "@animateicons/react/lucide/boxes-icon";
+import { SearchIcon } from "@animateicons/react/lucide/search-icon";
+import { HouseIcon } from "@animateicons/react/lucide/house-icon";
+import { CompassIcon } from "@animateicons/react/lucide/compass-icon";
+import { PaletteIcon } from "@animateicons/react/lucide/palette-icon";
+import { CameraIcon } from "@animateicons/react/lucide/camera-icon";
+import { FolderIcon } from "@animateicons/react/lucide/folder-icon";
+import { PlusIcon } from "@animateicons/react/lucide/plus-icon";
+import { ChevronRightIcon } from "@animateicons/react/lucide/chevron-right-icon";
+import { SettingsIcon } from "@animateicons/react/lucide/settings-icon";
+import { LogInIcon } from "@animateicons/react/lucide/log-in-icon";
+import { useIconHover } from "@animateicons/react";
+import { BookshelfIcon } from "@/core/components/ui/icons/BookshelfIcon";
+import { motion } from "motion/react";
+import { controlSpring, shellSpring } from "../motion";
 import { cn } from "@/core/lib/utils";
 import { UpdateIndicator } from "./UpdateIndicator";
 
@@ -70,40 +70,48 @@ function NavButton({ item, isActive, open, onClick }: NavButtonProps) {
   const Icon = item.icon;
 
   return (
-    <button
+    <motion.button
       type="button"
+      whileTap={{ scale: 0.97 }}
+      transition={controlSpring}
       onClick={onClick}
       aria-label={item.label}
       aria-current={isActive ? "page" : undefined}
       {...triggerProps}
       className={cn(
-        "relative flex items-center h-10 w-full rounded-button transition-colors duration-[150ms] ease-out cursor-pointer text-left select-none justify-start px-3 gap-3 active:scale-pressed hover:scale-hover focus-visible:ring-1 focus-visible:ring-theme-primary focus-visible:outline-none",
+        "shell-nav-button relative isolate flex items-center h-10 w-full rounded-button transition-colors duration-[150ms] ease-out cursor-pointer text-left select-none justify-start px-3 gap-3 focus-visible:ring-1 focus-visible:ring-theme-text focus-visible:outline-none",
         isActive
-          ? "bg-theme-surface text-theme-text font-medium shadow-sm"
-          : "text-theme-text/60 hover:text-theme-text hover:bg-theme-secondary/20 font-normal"
+          ? "text-theme-text font-medium"
+          : "text-theme-text/75 hover:text-theme-text hover:bg-theme-secondary/20 font-normal"
       )}
       title={item.label}
     >
+      {isActive && <motion.span
+        layoutId="primary-nav-selection"
+        className="shell-active-surface"
+        transition={shellSpring}
+        aria-hidden="true"
+      />}
       <div className="flex h-5 w-5 shrink-0 items-center justify-center pointer-events-none">
         <Icon
           ref={ref}
           size={18}
           className={cn(
             "transition-colors duration-[150ms] ease-out",
-            isActive ? "text-theme-text" : "text-theme-text/60"
+            isActive ? "text-theme-text" : "text-theme-text/75"
           )}
         />
       </div>
 
       <span
         className={cn(
-          "overflow-hidden whitespace-nowrap text-xs transition-opacity duration-[200ms] ease-out truncate",
+          "overflow-hidden whitespace-nowrap text-sm transition-opacity duration-[200ms] ease-out truncate",
           open ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
       >
         {item.label}
       </span>
-    </button>
+    </motion.button>
   );
 }
 
@@ -118,34 +126,42 @@ function InstanceRow({ inst, isSelected, open, onClick }: InstanceRowProps) {
   const { ref, triggerProps } = useIconHover();
 
   return (
-    <button
+    <motion.button
       type="button"
+      whileTap={{ scale: 0.97 }}
+      transition={controlSpring}
       onClick={onClick}
       aria-label={`${inst.name}${inst.version ? ` (${inst.version})` : ""}`}
       aria-current={isSelected ? "true" : undefined}
       {...triggerProps}
       className={cn(
-        "flex items-center h-[34px] w-full rounded-control transition-colors duration-[150ms] ease-out cursor-pointer text-left select-none justify-start px-3 gap-2.5 active:scale-pressed hover:scale-hover focus-visible:ring-1 focus-visible:ring-theme-primary focus-visible:outline-none",
+        "shell-nav-button relative isolate flex items-center h-9 w-full rounded-control transition-colors duration-[150ms] ease-out cursor-pointer text-left select-none justify-start px-3 gap-3 focus-visible:ring-1 focus-visible:ring-theme-text focus-visible:outline-none",
         isSelected
-          ? "bg-theme-surface/70 text-theme-text font-medium shadow-xs"
-          : "text-theme-text/60 hover:text-theme-text hover:bg-theme-secondary/20 font-normal"
+          ? "text-theme-text font-medium"
+          : "text-theme-text/75 hover:text-theme-text hover:bg-theme-secondary/20 font-normal"
       )}
       title={inst.name}
     >
+      {isSelected && <motion.span
+        layoutId="instance-selection"
+        className="shell-active-surface"
+        transition={shellSpring}
+        aria-hidden="true"
+      />}
       <div className="flex h-5 w-5 shrink-0 items-center justify-center pointer-events-none">
         <FolderIcon
           ref={ref}
           size={15}
           className={cn(
             "transition-colors duration-[150ms] ease-out",
-            isSelected ? "text-theme-primary" : "text-theme-text/50"
+            isSelected ? "text-theme-text" : "text-theme-text/75"
           )}
         />
       </div>
 
       <span
         className={cn(
-          "overflow-hidden whitespace-nowrap text-[11px] transition-opacity duration-[200ms] ease-out truncate",
+          "min-w-0 overflow-hidden whitespace-nowrap text-[13px] transition-opacity duration-[200ms] ease-out truncate",
           open ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
       >
@@ -154,12 +170,12 @@ function InstanceRow({ inst, isSelected, open, onClick }: InstanceRowProps) {
 
       {open && inst.version && (
         <span
-          className="ml-auto font-mono text-[9px] text-theme-text/40 transition-opacity duration-[200ms] ease-out shrink-0"
+          className="ml-auto font-mono text-caption text-theme-text/70 transition-opacity duration-[200ms] ease-out shrink-0"
         >
           {inst.version}
         </span>
       )}
-    </button>
+    </motion.button>
   );
 }
 
@@ -174,9 +190,7 @@ export function Sidebar({
   const [internalActiveId, setInternalActiveId] = useState<string>("home");
   const activeId = externalActiveId ?? internalActiveId;
 
-  const [instances, setInstances] = useState<InstanceItem[]>([
-    ...INITIAL_INSTANCES,
-  ]);
+  const [instances, setInstances] = useState<InstanceItem[]>(() => [...INITIAL_INSTANCES]);
   const [activeInstanceId, setActiveInstanceId] = useState<string>("vanilla");
 
   const brandHover = useIconHover();
@@ -252,25 +266,36 @@ export function Sidebar({
       )}
     >
       {/* Top Section */}
-      <div className="px-3 pt-2.5 flex flex-col gap-3 min-h-0 flex-1">
+      <div className="px-3 pt-3 flex flex-col gap-3 min-h-0 flex-1">
         {/* Brand Header (height: 40px) */}
         <div className="relative flex items-center h-10 w-full overflow-hidden">
-          <button
+          <motion.button
             type="button"
+            initial="rest"
+            animate="rest"
+            whileHover="hover"
+            whileFocus="hover"
+            whileTap={{ scale: 0.97 }}
+            transition={controlSpring}
             onClick={handleBrandClick}
             aria-label="Tachyon"
             {...brandHover.triggerProps}
-            className="group flex items-center gap-3 min-w-0 cursor-pointer text-left rounded-button focus-visible:ring-1 focus-visible:ring-theme-primary focus-visible:outline-none ml-0.5"
+            className="shell-brand group flex items-center gap-3 min-w-0 cursor-pointer text-left rounded-button focus-visible:ring-1 focus-visible:ring-theme-text focus-visible:outline-none ml-0.5"
             title="Tachyon"
           >
             {/* App icon badge: 40x40px rounded-button (12px), centered at rail when collapsed */}
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-button bg-theme-surface text-theme-text shadow-sm transition-all duration-[150ms] ease-out group-hover:scale-hover group-active:scale-pressed pointer-events-none">
+            <motion.div
+              initial={false}
+              variants={{ rest: { rotateX: 0, rotateY: 0, rotateZ: 0, y: 0 }, hover: { rotateX: 12, rotateY: -16, rotateZ: -3, y: -1 } }}
+              transition={controlSpring}
+              className="shell-brand-badge flex h-10 w-10 shrink-0 items-center justify-center rounded-button text-theme-text pointer-events-none"
+            >
               <BoxesIcon
                 ref={brandHover.ref}
                 size={20}
                 className="text-theme-text"
               />
-            </div>
+            </motion.div>
 
             {/* App name */}
             <span
@@ -281,7 +306,7 @@ export function Sidebar({
             >
               Tachyon
             </span>
-          </button>
+          </motion.button>
 
           {/* Search button: 32x32px rounded-control (8px) */}
           <button
@@ -292,7 +317,7 @@ export function Sidebar({
             aria-current={activeId === "search" ? "page" : undefined}
             {...searchHover.triggerProps}
             className={cn(
-              "absolute right-0 top-1 flex h-8 w-8 items-center justify-center rounded-control text-theme-text/60 hover:text-theme-text hover:bg-theme-secondary/20 transition-all duration-[150ms] ease-out shrink-0 cursor-pointer active:scale-pressed hover:scale-hover focus-visible:ring-1 focus-visible:ring-theme-primary focus-visible:outline-none",
+              "absolute right-0 top-1 flex h-8 w-8 items-center justify-center rounded-control text-theme-text/75 hover:text-theme-text hover:bg-theme-secondary/20 transition-all duration-[150ms] ease-out shrink-0 cursor-pointer active:scale-pressed hover:scale-hover focus-visible:ring-1 focus-visible:ring-theme-text focus-visible:outline-none",
               open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
             )}
             title="Search"
@@ -307,7 +332,7 @@ export function Sidebar({
         </div>
 
         {/* Primary Navigation Links */}
-        <nav className="flex flex-col gap-1.5" aria-label="Primary Navigation">
+        <nav className="flex flex-col gap-1" aria-label="Primary Navigation">
           {PRIMARY_NAV_ITEMS.map((item) => {
             const isHome = item.id === "home";
             const isHomeActive =
@@ -334,20 +359,20 @@ export function Sidebar({
           {/* Header */}
           <div
             className={cn(
-              "flex items-center h-6 w-full overflow-hidden transition-all duration-[150ms] ease-out",
+              "flex items-center h-8 w-full overflow-hidden transition-all duration-[150ms] ease-out",
               open ? "justify-between px-2" : "justify-center px-0"
             )}
           >
             <div
               className={cn(
-                "flex items-center gap-1 text-[11px] font-semibold text-theme-text/60 transition-opacity duration-[200ms] ease-out",
+                "flex items-center gap-1 text-caption font-semibold text-theme-text/75 transition-opacity duration-[200ms] ease-out",
                 open ? "opacity-100" : "hidden"
               )}
             >
               <span className="truncate">Instances</span>
               <ChevronRightIcon
                 size={12}
-                className="text-theme-text/40 pointer-events-none"
+                className="text-theme-text/70 pointer-events-none"
               />
             </div>
 
@@ -356,7 +381,7 @@ export function Sidebar({
               onClick={handleAddInstance}
               aria-label="Add instance"
               {...addHover.triggerProps}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-control text-theme-text/60 hover:text-theme-text hover:bg-theme-secondary/20 transition-all duration-[150ms] ease-out cursor-pointer active:scale-pressed hover:scale-hover focus-visible:ring-1 focus-visible:ring-theme-primary focus-visible:outline-none"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-theme-text/75 hover:text-theme-text hover:bg-theme-secondary/20 transition-all duration-[150ms] ease-out cursor-pointer active:scale-pressed hover:scale-hover focus-visible:ring-1 focus-visible:ring-theme-text focus-visible:outline-none"
               title="Add Instance"
             >
               <PlusIcon
@@ -385,8 +410,8 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Bottom Section (pinned at bottom pb-2.5 px-3 flex flex-col gap-1.5) */}
-      <div className="pb-2.5 px-3 flex flex-col gap-1.5 shrink-0">
+      {/* Bottom Section (pinned at bottom pb-3 px-3 flex flex-col gap-1) */}
+      <div className="pb-3 px-3 flex flex-col gap-1 shrink-0">
         {/* Settings */}
         <button
           type="button"
@@ -395,10 +420,10 @@ export function Sidebar({
           aria-current={activeId === "settings" ? "page" : undefined}
           {...settingsHover.triggerProps}
           className={cn(
-            "relative flex items-center h-10 w-full rounded-button transition-colors duration-[150ms] ease-out cursor-pointer text-left select-none justify-start px-3 gap-3 active:scale-pressed hover:scale-hover focus-visible:ring-1 focus-visible:ring-theme-primary focus-visible:outline-none",
+            "relative flex items-center h-10 w-full rounded-button transition-colors duration-[150ms] ease-out cursor-pointer text-left select-none justify-start px-3 gap-3 active:scale-pressed hover:scale-hover focus-visible:ring-1 focus-visible:ring-theme-text focus-visible:outline-none",
             activeId === "settings"
               ? "bg-theme-surface text-theme-text font-medium shadow-sm"
-              : "text-theme-text/60 hover:text-theme-text hover:bg-theme-secondary/20 font-normal"
+              : "text-theme-text/75 hover:text-theme-text hover:bg-theme-secondary/20 font-normal"
           )}
           title="Settings"
         >
@@ -410,13 +435,13 @@ export function Sidebar({
                 "transition-colors duration-[150ms] ease-out",
                 activeId === "settings"
                   ? "text-theme-text"
-                  : "text-theme-text/60"
+                  : "text-theme-text/75"
               )}
             />
           </div>
           <span
             className={cn(
-              "overflow-hidden whitespace-nowrap text-xs transition-opacity duration-[200ms] ease-out truncate",
+              "overflow-hidden whitespace-nowrap text-sm transition-opacity duration-[200ms] ease-out truncate",
               open ? "opacity-100" : "opacity-0 pointer-events-none"
             )}
           >
@@ -435,10 +460,10 @@ export function Sidebar({
           aria-current={activeId === "login" ? "page" : undefined}
           {...loginHover.triggerProps}
           className={cn(
-            "relative flex items-center h-10 w-full rounded-button transition-colors duration-[150ms] ease-out cursor-pointer text-left select-none justify-start px-3 gap-3 active:scale-pressed hover:scale-hover focus-visible:ring-1 focus-visible:ring-theme-primary focus-visible:outline-none",
+            "relative flex items-center h-10 w-full rounded-button transition-colors duration-[150ms] ease-out cursor-pointer text-left select-none justify-start px-3 gap-3 active:scale-pressed hover:scale-hover focus-visible:ring-1 focus-visible:ring-theme-text focus-visible:outline-none",
             activeId === "login"
               ? "bg-theme-surface text-theme-text font-medium shadow-sm"
-              : "text-theme-text/60 hover:text-theme-text hover:bg-theme-secondary/20 font-normal"
+              : "text-theme-text/75 hover:text-theme-text hover:bg-theme-secondary/20 font-normal"
           )}
           title="Login"
         >
@@ -448,13 +473,13 @@ export function Sidebar({
               size={18}
               className={cn(
                 "transition-colors duration-[150ms] ease-out",
-                activeId === "login" ? "text-theme-text" : "text-theme-text/60"
+                activeId === "login" ? "text-theme-text" : "text-theme-text/75"
               )}
             />
           </div>
           <span
             className={cn(
-              "overflow-hidden whitespace-nowrap text-xs transition-opacity duration-[200ms] ease-out truncate",
+              "overflow-hidden whitespace-nowrap text-sm transition-opacity duration-[200ms] ease-out truncate",
               open ? "opacity-100" : "opacity-0 pointer-events-none"
             )}
           >
