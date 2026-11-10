@@ -176,3 +176,81 @@ pub struct ProjectDetail {
     pub project: Project,
     pub body_html: String,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ProjectVersion {
+    pub id: String,
+    pub project_id: String,
+    pub name: String,
+    pub version_number: String,
+    pub version_type: String,
+    pub date_published: String,
+    pub downloads: u64,
+    pub featured: bool,
+    pub game_versions: Vec<String>,
+    pub loaders: Vec<String>,
+    pub changelog: Option<String>,
+    pub files: Vec<VersionFile>,
+    pub dependencies: Vec<VersionDependency>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct VersionFile {
+    pub filename: String,
+    pub url: String,
+    pub size: u64,
+    pub primary: bool,
+    pub hashes: FileHashes,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct FileHashes {
+    pub sha512: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct VersionDependency {
+    pub project_id: Option<String>,
+    pub version_id: Option<String>,
+    pub file_name: Option<String>,
+    pub dependency_type: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct VersionInput {
+    pub project_id: String,
+    pub game_version: String,
+    pub loader: String,
+    pub channel: String,
+    pub offset: usize,
+}
+
+#[derive(Serialize)]
+pub struct VersionPage {
+    pub versions: Vec<ProjectVersion>,
+    pub total: usize,
+    pub offset: usize,
+    pub limit: usize,
+}
+
+#[derive(Serialize)]
+pub struct VersionDetail {
+    pub version: ProjectVersion,
+    pub changelog_html: String,
+    pub dependencies: Vec<ResolvedDependency>,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct DependencyProject {
+    pub id: String,
+    pub slug: String,
+    pub title: String,
+    pub project_type: String,
+}
+#[derive(Serialize)]
+pub struct ResolvedDependency {
+    pub name: String,
+    pub dependency_type: String,
+    pub url: Option<String>,
+}

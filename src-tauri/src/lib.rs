@@ -17,12 +17,17 @@ pub fn run() {
         })
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet,
             explore::explore_search,
             explore::explore_project,
             explore::explore_filters,
-            explore::explore_image
+            explore::explore_image,
+            explore::versions::explore_versions,
+            explore::versions::explore_version,
+            explore::downloads::explore_download,
+            explore::downloads::explore_cancel_download
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
