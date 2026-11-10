@@ -23,6 +23,7 @@ pub fn origin_error(message: impl Into<String>) -> OriginError {
 pub struct Transport {
     client: Client,
     images: Client,
+    downloads: Client,
     permits: Arc<Semaphore>,
     image_slots: Arc<Semaphore>,
     retry_at: Arc<AtomicU64>,
@@ -62,13 +63,48 @@ impl Transport {
             }))
             .build()
             .map_err(|e| origin_error(e.to_string()))?;
+        let downloads = builder()
+            .timeout(Duration::from_secs(600))
+            .read_timeout(Duration::from_secs(30))
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .map_err(|e| origin_error(e.to_string()))?;
         Ok(Self {
             client,
             images,
+            downloads,
             permits: Arc::new(Semaphore::new(6)),
             image_slots: Arc::new(Semaphore::new(2)),
             retry_at: Arc::new(AtomicU64::new(0)),
         })
+    }
+
+    pub(super) async fn download_response(
+        &self,
+        url: Url,
+    ) -> Result<(Response, tokio::sync::OwnedSemaphorePermit), OriginError> {
+        let permit = self
+            .permits
+            .clone()
+            .acquire_owned()
+            .await
+            .map_err(|_| origin_error("Catalog is closing."))?;
+        let response = self
+            .downloads
+            .get(url)
+            .header(header::ACCEPT_ENCODING, "identity")
+            .send()
+            .await
+            .map_err(|_| {
+                origin_error("Could not start the download. Check your connection and retry.")
+            })?;
+        let response = response
+            .error_for_status()
+            .map_err(|_| origin_error("The release file is unavailable."))?;
+        if response.status() != StatusCode::OK {
+            return Err(origin_error("The release file could not be downloaded."));
+        }
+        Ok((response, permit))
     }
 
     pub async fn get_image(&self, url: Url) -> Result<WireResponse, OriginError> {

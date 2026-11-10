@@ -42,6 +42,19 @@ export interface Project {
   gallery: { url: string; raw_url?: string | null; featured: boolean; title: string | null }[];
 }
 export interface ProjectDetail { project: Project; body_html: string }
+export interface VersionFile { filename: string; url: string; size: number; primary: boolean; hashes: { sha512: string } }
+export interface VersionDependency { project_id: string | null; version_id: string | null; file_name: string | null; dependency_type: string }
+export interface ProjectVersion {
+  id: string; project_id: string; name: string; version_number: string;
+  version_type: string; date_published: string; downloads: number; featured: boolean;
+  game_versions: string[]; loaders: string[]; changelog: string | null;
+  files: VersionFile[]; dependencies: VersionDependency[];
+}
+export interface VersionInput { project_id: string; game_version: string; loader: string; channel: string; offset: number }
+export interface VersionPage { versions: ProjectVersion[]; total: number; offset: number; limit: number }
+export interface VersionDetail { version: ProjectVersion; changelog_html: string; dependencies: { name: string; dependency_type: string; url: string | null }[] }
+export interface DownloadProgress { downloaded: number; total: number; stage: "downloading" | "verifying" | "complete" }
+export interface DownloadReceipt { path: string; filename: string; size: number }
 
 export const CONTENT_TYPES: { id: ContentKind; label: string; singular: string }[] = [
   { id: "modpack", label: "Modpacks", singular: "Modpack" },

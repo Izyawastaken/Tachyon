@@ -46,6 +46,8 @@ Buffered writes are deliberately not enabled globally: the V1/R1 source commit a
 New-Item -ItemType Directory -Force tests/generated
 $env:TACHYON_EXPLORE_SNAPSHOT = "$PWD/tests/generated/catalog.json"
 cargo test --manifest-path src-tauri/Cargo.toml --lib explore::tests::live_catalog_smoke_test -- --ignored --nocapture
+$env:TACHYON_RELEASE_SNAPSHOT = "$PWD/tests/generated/releases.json"
+cargo test --manifest-path src-tauri/Cargo.toml --lib live_releases_and_download_smoke_test -- --ignored --nocapture
 pnpm dev
 ```
 
@@ -62,3 +64,6 @@ Catalog installation and instance targeting are intentionally outside this brows
 - Gallery images prefer Modrinth `raw_url` originals. Click or keyboard activation opens a modal viewer with fit and original-pixel-size modes; Escape dismisses the image before returning from project details. Unloaded gallery cells reserve space for effective lazy loading.
 - Rendering and project-record cache namespaces were advanced so persisted descriptions with removed images cannot mask the fix.
 - Validation: 13 deterministic Rust tests, Clippy with warnings denied, production build, and explicit live Modrinth smoke test passed. The live fixture included Complementary creator-hosted banners and original gallery assets up to 5 MiB. Browser verification confirmed a local 1968×1080 inline image fit without cropping, 1:1 zoom at 1968×1080, and Escape focus restoration to the image within project details.
+
+
+Project release tabs, changelog caching, native file downloads and their verification are documented in `docs/explore-releases-plan.md`.

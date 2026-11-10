@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { searchIdentity } from "./api";
 import { useQuickLook } from "./hooks/useQuickLook";
-import { ProjectDetailView } from "./components/ProjectDetailView";
 import Search from "lucide-react/icons/search";
 import ArrowLeft from "lucide-react/icons/arrow-left";
 import ArrowRight from "lucide-react/icons/arrow-right";
@@ -16,6 +15,10 @@ import { ProjectCard } from "./components/ProjectCard";
 import { CONTENT_TYPES, fullNumber, INITIAL_SEARCH, PAGE_SIZE, type SearchInput, type ProjectHit } from "./types";
 import "./ExplorePage.css";
 
+let detailModule: Promise<typeof import("./components/ProjectDetailView")> | undefined;
+const loadProjectDetail = () => detailModule ??= import("./components/ProjectDetailView");
+const ProjectDetailView = lazy(() => loadProjectDetail().then(module => ({ default: module.ProjectDetailView })));
+
 export default function ExplorePage({ sidebarOpen }: { sidebarOpen: boolean }) {
   const [input, setInput] = useState<SearchInput>(INITIAL_SEARCH);
   const query = useDebouncedValue(input.query, 220);
@@ -27,6 +30,11 @@ export default function ExplorePage({ sidebarOpen }: { sidebarOpen: boolean }) {
   const [selected, setSelected] = useState<ProjectHit | null>(null);
   const origin = useRef<HTMLButtonElement | null>(null);
   const quick = useQuickLook(searchIdentity(applied), !selected);
+  const hoverProject = useCallback((id: string | null) => {
+    quick.hover(id);
+    // Warm animation code on intent; project data still loads only on click.
+    if (id) void loadProjectDetail().catch(() => {});
+  }, [quick.hover]);
   const openProject = useCallback((project: ProjectHit, element: HTMLButtonElement) => {
     origin.current = element;
     quick.clear(); top.close(); bottom.close();
@@ -54,7 +62,7 @@ export default function ExplorePage({ sidebarOpen }: { sidebarOpen: boolean }) {
           {catalog.error ? <div className="explore-message" role="alert"><h2>Catalog unavailable</h2><p>{catalog.error}</p><button type="button" onClick={catalog.retry}>Try again</button></div>
             : !page ? <div className="explore-grid" aria-label="Loading projects">{Array.from({ length: 12 }, (_, index) => <div key={index} className="project-skeleton" />)}</div>
             : page.hits.length === 0 ? <div className="explore-message"><h2>No projects found</h2><p>Try another search or widen your filters.</p><button type="button" onClick={() => setInput({ ...INITIAL_SEARCH, kind: input.kind })}>Clear search &amp; filters</button></div>
-            : <div className="explore-grid">{page.hits.map(project => <ProjectCard key={project.project_id} project={project} quick={quick.quickId === project.project_id} onOpen={openProject} onHover={quick.hover} onCancel={quick.clear} />)}</div>}
+            : <div className="explore-grid">{page.hits.map(project => <ProjectCard key={project.project_id} project={project} quick={quick.quickId === project.project_id} onOpen={openProject} onHover={hoverProject} onCancel={quick.clear} />)}</div>}
         </div>
         <div className="explore-pagination">
           <span>Hold <kbd>Space</kbd> over a project for Quick Look</span>
@@ -63,9 +71,9 @@ export default function ExplorePage({ sidebarOpen }: { sidebarOpen: boolean }) {
             <button type="button" aria-label="Next page" disabled={catalog.loading || !page || page.offset + page.limit >= page.total_hits || input.offset >= 10_000 - PAGE_SIZE} onClick={() => change({ offset: input.offset + PAGE_SIZE })}><ArrowRight size={16} /></button></div>
         </div>
       </section>
-      <AnimatePresence onExitComplete={() => origin.current?.focus({ preventScroll: true })}>
+      <Suspense fallback={null}><AnimatePresence onExitComplete={() => origin.current?.focus({ preventScroll: true })}>
         {selected && <ProjectDetailView key={selected.project_id} hit={selected} onClose={closeProject} />}
-      </AnimatePresence>
+      </AnimatePresence></Suspense>
     </ShellViewport>
     <TypeSelector drawer={bottom} kind={input.kind} onChange={kind => change({ kind, loaders: [], categories: [] })} disabled={Boolean(selected)} />
   </div>;

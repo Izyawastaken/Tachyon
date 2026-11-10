@@ -1,10 +1,14 @@
+pub(crate) mod downloads;
 mod markdown;
 mod media;
 mod models;
 mod prefetch;
+#[cfg(test)]
+mod release_tests;
 mod source;
 #[cfg(test)]
 mod tests;
+pub(crate) mod versions;
 
 use engram::{
     CacheKey, Compression, Engram, ResolveOptions, ResolveStatus, SqliteSynchronous,
@@ -43,6 +47,7 @@ struct Backend {
     media: PathBuf,
     media_requests: AtomicUsize,
     background_slots: Semaphore,
+    downloads: downloads::Transfers,
 }
 
 impl ExploreState {
@@ -83,6 +88,7 @@ impl ExploreState {
                     media,
                     media_requests: AtomicUsize::new(0),
                     background_slots: Semaphore::new(2),
+                    downloads: downloads::Transfers::default(),
                 }))
             })
             .await
@@ -231,18 +237,24 @@ impl Backend {
                 7 * 86400,
             )
             .await?;
+        let body_html = self.render_body(result.data.body.clone()).await?;
+        Ok(CatalogResult {
+            data: ProjectDetail {
+                project: result.data,
+                body_html,
+            },
+            stale: result.stale,
+        })
+    }
+    async fn render_body(&self, body: String) -> Result<String, String> {
         let key = CacheKey::<String>::new(
-            format!(
-                "explore/markdown/v2/{}",
-                media::digest(result.data.body.as_bytes())
-            ),
+            format!("explore/markdown/v2/{}", media::digest(body.as_bytes())),
             "safe-project-html@2",
         );
         let body_html =
             if let Some(html) = self.cache.get_key(&key).await.map_err(|e| e.to_string())? {
                 html
             } else {
-                let body = result.data.body.clone();
                 let html = tauri::async_runtime::spawn_blocking(move || render_markdown(&body))
                     .await
                     .map_err(|e| e.to_string())?;
@@ -252,13 +264,7 @@ impl Backend {
                     .map_err(|e| e.to_string())?;
                 html
             };
-        Ok(CatalogResult {
-            data: ProjectDetail {
-                project: result.data,
-                body_html,
-            },
-            stale: result.stale,
-        })
+        Ok(body_html)
     }
 }
 

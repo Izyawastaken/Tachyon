@@ -5,6 +5,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { mockIPC } from '@tauri-apps/api/mocks';
 import snapshot from './generated/catalog.json';
+import releases from './generated/releases.json';
 import App from '../src/App';
 import '../src/index.css';
 // Isolated browser test harness. All fixtures and image files were captured by
@@ -28,6 +29,29 @@ mockIPC(async (command, args) => {
     if (!image) throw new Error('Image absent from Rust smoke-test snapshot');
     return '/tests/generated/' + image.replace('./', '');
   }
+  if (command === 'explore_versions') {
+    const input = args.input;
+    const original = input.game_version === '1.21.1' ? releases.filtered : input.offset === 20 ? releases.second : releases.versions;
+    const result = structuredClone(original);
+    if (input.game_version) result.data.versions = result.data.versions.filter(version => version.game_versions.includes(input.game_version));
+    if (input.loader) result.data.versions = result.data.versions.filter(version => version.loaders.includes(input.loader));
+    if (input.channel) result.data.versions = result.data.versions.filter(version => version.version_type === input.channel);
+    result.data.offset = input.offset;
+    if (!result.data.versions.length) result.data.total = 0;
+    return result;
+  }
+  if (command === 'explore_version') {
+    const detail = releases.details[args.id];
+    if (!detail) throw new Error('This release was not captured by the Rust live test');
+    return detail;
+  }
+  if (command === 'explore_download') {
+    // Isolated UI check simulates cancelling the native Save dialog. Actual
+    // streaming, checksum and cancellation behavior is verified by Rust tests.
+    document.body.dataset.downloadRequested = JSON.stringify(args.input);
+    return null;
+  }
+  if (command === 'explore_cancel_download') return;
   if (command === 'explore_project') {
     if (args.id === snapshot.visual_project?.data.project.id) return snapshot.visual_project;
     if (args.id !== snapshot.project.data.project.id) throw new Error('This project detail was not captured by the Rust smoke test');
