@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
-import { ArrowLeft, ExternalLink, Download, Heart, Code2, BookOpen, CircleHelp } from "lucide-react";
+import ArrowLeft from "lucide-react/icons/arrow-left";
+import ExternalLink from "lucide-react/icons/external-link";
+import Download from "lucide-react/icons/download";
+import Heart from "lucide-react/icons/heart";
+import Code2 from "lucide-react/icons/code-xml";
+import BookOpen from "lucide-react/icons/book-open";
+import CircleHelp from "lucide-react/icons/circle-help";
 import { motion } from "motion/react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { shellSpring } from "@/shell/motion";
@@ -53,10 +59,11 @@ export function ProjectDetailView({ hit, onClose }: { hit: ProjectHit; onClose: 
           <h2>About {hit.title}</h2>
           {result ? <div className="project-markdown" onClick={link} dangerouslySetInnerHTML={{ __html: result.data.body_html }} />
             : !error ? <div className="project-body-loading" role="status">Loading project details…</div> : null}
-          {project && project.gallery.length > 0 && <section className="project-gallery"><h2>Gallery</h2><div>{project.gallery.slice(0, 6).map(image => <ProjectImage key={image.url} url={image.url} title={image.title ?? `${hit.title} screenshot`} gallery />)}</div></section>}
+          {project && project.gallery.length > 0 && <section className="project-gallery"><h2>Gallery</h2><div>{project.gallery.map(image => <ProjectImage key={image.url} url={image.url} title={image.title ?? `${hit.title} screenshot`} gallery />)}</div></section>}
         </article>
         <aside className="project-info" aria-label="Project compatibility and links">
           <section><h2>Compatibility</h2><h3>Minecraft</h3><div className="project-info-tags">{(project?.game_versions ?? hit.versions).slice(-12).reverse().map(version => <span key={version}>{version}</span>)}</div>
+            {(project?.game_versions ?? hit.versions).length > 12 && <details className="project-all-versions"><summary>All supported versions</summary><div className="project-info-tags">{(project?.game_versions ?? hit.versions).slice().reverse().map(version => <span key={version}>{version}</span>)}</div></details>}
             {project && project.loaders.length > 0 && <><h3>Loaders</h3><div className="project-info-tags">{project.loaders.map(loader => <span key={loader}>{displayTag(loader)}</span>)}</div></>}
           </section>
           <section><h2>Categories</h2><div className="project-info-tags">{(project?.categories ?? hit.display_categories).map(category => <span key={category}>{displayTag(category)}</span>)}</div></section>

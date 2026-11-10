@@ -62,6 +62,8 @@ impl ExploreState {
                     .storage(self.root.join("catalog.db"))
                     .memory_capacity(48 * 1024 * 1024)
                     .compression(Compression::Zstd { level: 1 })
+                    .compression_threshold(1024)
+                    .compress_only_if_smaller(true)
                     .sqlite_connections(3)
                     // Catalog data is reproducible, so losing recent cache writes is harmless.
                     .sqlite_synchronous(SqliteSynchronous::Normal)

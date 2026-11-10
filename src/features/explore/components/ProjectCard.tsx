@@ -1,7 +1,8 @@
 import { motion } from "motion/react";
 import { shellSpring } from "@/shell/motion";
 import { memo } from "react";
-import { Download, Heart } from "lucide-react";
+import Download from "lucide-react/icons/download";
+import Heart from "lucide-react/icons/heart";
 import { compactNumber, displayTag, type ProjectHit } from "../types";
 import { ProjectImage } from "./ProjectImage";
 

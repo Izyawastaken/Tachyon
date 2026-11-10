@@ -130,3 +130,5 @@
 
 .shell-stage { display: flex; flex: 1; min-width: 0; min-height: 0; }
 .shell-route-loading { padding: var(--space-lg); color: var(--shell-foreground); }
+
+.shell-route-loading button { margin-top: var(--space-sm); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-button); background: var(--theme-surface); color: var(--theme-text); }

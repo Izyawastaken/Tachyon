@@ -88,3 +88,48 @@ impl Drop for Window {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn changing_filter_family_aborts_obsolete_work() {
+        let window = Window::default();
+        let original = SearchInput {
+            kind: "mod".into(),
+            ..Default::default()
+        };
+        let first = window.begin(&original).await;
+        let job = tokio::spawn(std::future::pending::<()>());
+        let abort = job.abort_handle();
+        window.inner.lock().await.jobs.insert(24, job);
+        let next = window
+            .begin(&SearchInput {
+                kind: "shader".into(),
+                ..Default::default()
+            })
+            .await;
+        tokio::task::yield_now().await;
+        assert!(abort.is_finished());
+        assert!(window.inner.lock().await.jobs.is_empty());
+        assert!(next > first);
+    }
+
+    #[tokio::test]
+    async fn paging_within_a_filter_family_retains_shared_work() {
+        let window = Window::default();
+        let mut input = SearchInput {
+            kind: "mod".into(),
+            ..Default::default()
+        };
+        window.begin(&input).await;
+        let job = tokio::spawn(std::future::pending::<()>());
+        let abort = job.abort_handle();
+        window.inner.lock().await.jobs.insert(24, job);
+        input.offset = 24;
+        window.begin(&input).await;
+        assert!(!abort.is_finished());
+        assert_eq!(window.inner.lock().await.jobs.len(), 1);
+    }
+}

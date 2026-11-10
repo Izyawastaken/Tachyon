@@ -23,6 +23,7 @@ pub fn origin_error(message: impl Into<String>) -> OriginError {
 pub struct Transport {
     client: Client,
     permits: Arc<Semaphore>,
+    image_slots: Arc<Semaphore>,
     retry_at: Arc<AtomicU64>,
 }
 
@@ -43,8 +44,16 @@ impl Transport {
         Ok(Self {
             client,
             permits: Arc::new(Semaphore::new(6)),
+            image_slots: Arc::new(Semaphore::new(2)),
             retry_at: Arc::new(AtomicU64::new(0)),
         })
+    }
+
+    pub async fn image_permit(&self) -> Result<tokio::sync::SemaphorePermit<'_>, OriginError> {
+        self.image_slots
+            .acquire()
+            .await
+            .map_err(|_| origin_error("Catalog is closing."))
     }
 
     pub async fn get(
@@ -104,15 +113,6 @@ impl Transport {
                 .unwrap_or_default(),
             ..Default::default()
         };
-        let content_type = response
-            .headers()
-            .get(header::CONTENT_TYPE)
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or_default()
-            .split(';')
-            .next()
-            .unwrap_or_default()
-            .to_owned();
         if status != StatusCode::NOT_MODIFIED
             && status != StatusCode::NOT_FOUND
             && !status.is_success()
@@ -127,7 +127,6 @@ impl Transport {
             status,
             metadata,
             bytes,
-            content_type,
         })
     }
 }
@@ -164,7 +163,6 @@ pub struct WireResponse {
     pub status: StatusCode,
     pub metadata: ValidationMetadata,
     pub bytes: Vec<u8>,
-    pub content_type: String,
 }
 
 pub struct JsonSource<T> {
@@ -212,8 +210,22 @@ impl<T: DeserializeOwned + Send + Sync> Source<T> for JsonSource<T> {
                 Err(_) => return Ok(ValidationOutcome::Unavailable),
             };
             if wire.status == StatusCode::NOT_MODIFIED {
+                // A 304 need not repeat its validators. Keep those retained by
+                // Engram, otherwise the next V1 would fall back to a full GET.
+                let mut metadata = wire.metadata;
+                if let Some(previous) = request.validation {
+                    if metadata.etag.is_none() {
+                        metadata.etag = previous.etag.clone();
+                    }
+                    if metadata.opaque.is_empty() {
+                        metadata.opaque = previous.opaque.clone();
+                    }
+                    if metadata.last_modified_unix_ms.is_none() {
+                        metadata.last_modified_unix_ms = previous.last_modified_unix_ms;
+                    }
+                }
                 return Ok(ValidationOutcome::Fresh {
-                    validation: Some(wire.metadata),
+                    validation: Some(metadata),
                 });
             }
             // V1 may receive a full changed representation. Hand it to R1, avoiding a second GET.

@@ -1,4 +1,7 @@
-import { SlidersHorizontal, RotateCcw, ChevronDown, Pin } from "lucide-react";
+import SlidersHorizontal from "lucide-react/icons/sliders-horizontal";
+import RotateCcw from "lucide-react/icons/rotate-ccw";
+import ChevronDown from "lucide-react/icons/chevron-down";
+import Pin from "lucide-react/icons/pin";
 import { motion, useReducedMotion } from "motion/react";
 import { shellSpring } from "@/shell/motion";
 import type { useHoverDrawer } from "../hooks/useHoverDrawer";
@@ -21,8 +24,8 @@ export function FilterDrawer({ drawer, input, filters, error, retry, onChange, d
   return <motion.header className="explore-filter-drawer" initial={false}
     animate={{ height: open ? "auto" : 44 }} transition={reduced ? { duration: 0 } : shellSpring}
     {...drawer.handlers}>
-    <div className="explore-drawer-bar">
-      <span className="explore-wordmark">Explore <span>Modrinth catalog</span></span>
+    <div className="explore-drawer-bar" data-tauri-drag-region>
+      <span className="explore-wordmark" data-tauri-drag-region>Explore <span>Modrinth catalog</span></span>
       <button ref={drawer.toggleRef} type="button" className="explore-filter-toggle" onClick={drawer.toggle}
         disabled={disabled} aria-expanded={open} aria-pressed={drawer.pinned} aria-controls="explore-filters"
         title="Hover to reveal filters. Click to keep them open.">

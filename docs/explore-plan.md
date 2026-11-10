@@ -18,7 +18,7 @@ Branch: `codex/features/explore`, based on `exp-dev`. Work sequentially and merg
 - [x] 2b. Launch L2-to-L1 warm-up, two-page lookahead, stale-while-revalidate events and obsolete-prefetch cancellation.
 - [x] 3. Explore routing, search/grid, top filter drawer and bottom type selector.
 - [x] 4. Shared card/detail spring morph, hold-Space Quick Look, accessible interaction cleanup.
-- [ ] 5. Backend tests, actual-origin smoke test, UI verification, production build, then merge into exp-dev.
+- [x] 5. Backend tests, actual-origin smoke test, UI verification and production build. Merge into exp-dev after this verification commit.
 
 ## Backend policy
 

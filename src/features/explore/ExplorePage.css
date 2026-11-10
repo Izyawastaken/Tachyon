@@ -170,3 +170,6 @@
   .project-detail-hero { gap: 12px; }
   .project-card-quick { padding: 20px; }
 }
+
+.project-all-versions { margin-top: 12px; font-size: 12px; }
+.project-all-versions summary { cursor: pointer; margin-bottom: 12px; color: var(--explore-muted); }

@@ -9,12 +9,13 @@ export function useDebouncedValue<T>(value: T, delay: number) {
   return debounced;
 }
 
-export function useCatalog(input: SearchInput) {
+export function useCatalog(input: SearchInput, ready = true) {
   const [result, setResult] = useState<CatalogResult<SearchPage> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
+    if (!ready) { setLoading(true); setError(null); return; }
     let active = true;
     let refreshed = false;
     const subscription = listen<{ input: SearchInput; result: CatalogResult<SearchPage> }>("explore:catalog-refreshed", event => {
@@ -33,7 +34,7 @@ export function useCatalog(input: SearchInput) {
       }).catch(cause => { if (active && !refreshed) { setError(errorMessage(cause)); setLoading(false); } });
     });
     return () => { active = false; void subscription.then(unlisten => unlisten()); };
-  }, [input, retry]);
+  }, [input, retry, ready]);
   return { result, loading, error, retry: () => setRetry(value => value + 1) };
 }
 

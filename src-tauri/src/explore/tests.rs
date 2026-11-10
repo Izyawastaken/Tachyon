@@ -148,10 +148,16 @@ async fn conditional_validation_reuses_changed_body_and_serves_stale_on_outage()
             }
             observed.fetch_add(1, Ordering::Relaxed);
             let response = match body {
-                None => "HTTP/1.1 304 Not Modified\r\nConnection: close\r\nETag: \"one\"\r\nContent-Length: 0\r\n\r\n".to_string(),
+                None => {
+                    "HTTP/1.1 304 Not Modified\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
+                        .to_string()
+                }
                 Some(value) => {
                     let data = format!("{{\"value\":\"{value}\"}}");
-                    format!("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\nETag: \"{value}\"\r\nContent-Length: {}\r\n\r\n{data}", data.len())
+                    format!(
+                        "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\nETag: \"{value}\"\r\nContent-Length: {}\r\n\r\n{data}",
+                        data.len()
+                    )
                 }
             };
             stream.write_all(response.as_bytes()).unwrap();
@@ -310,4 +316,18 @@ async fn live_catalog_smoke_test() {
             .await
             .unwrap();
     }
+}
+
+#[test]
+fn raster_format_uses_bytes_not_cdn_suffixes_or_headers() {
+    assert_eq!(media::raster_extension(b"RIFF1234WEBPdata"), Some("webp"));
+    assert_eq!(
+        media::raster_extension(b"\x89PNG\r\n\x1a\ndata"),
+        Some("png")
+    );
+    assert_eq!(
+        media::raster_extension(b"<svg onload='alert(1)'></svg>"),
+        None
+    );
+    assert_eq!(media::raster_extension(b"0000ftypisom"), None);
 }

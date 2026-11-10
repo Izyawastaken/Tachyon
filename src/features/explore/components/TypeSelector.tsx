@@ -1,4 +1,10 @@
-import { Blocks, Package, Layers, Sun, FileCode2, ChevronUp, Pin } from "lucide-react";
+import Blocks from "lucide-react/icons/blocks";
+import Package from "lucide-react/icons/package";
+import Layers from "lucide-react/icons/layers";
+import Sun from "lucide-react/icons/sun";
+import FileCode2 from "lucide-react/icons/file-code-2";
+import ChevronUp from "lucide-react/icons/chevron-up";
+import Pin from "lucide-react/icons/pin";
 import { motion, useReducedMotion } from "motion/react";
 import { shellSpring } from "@/shell/motion";
 import type { useHoverDrawer } from "../hooks/useHoverDrawer";

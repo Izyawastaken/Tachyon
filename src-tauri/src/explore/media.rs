@@ -19,6 +19,9 @@ pub struct MediaRecord {
 }
 
 pub fn media_url(value: &str) -> Result<Url, String> {
+    if value.len() > 4096 {
+        return Err("Image address is too long.".into());
+    }
     let url = Url::parse(value).map_err(|_| "Invalid image address.")?;
     if url.scheme() != "https"
         || url.host_str() != Some("cdn.modrinth.com")
@@ -27,6 +30,7 @@ pub fn media_url(value: &str) -> Result<Url, String> {
         || url.password().is_some()
         || !url.path().starts_with("/data/")
         || url.query().is_some()
+        || url.fragment().is_some()
     {
         return Err("Only Modrinth catalog images are supported.".into());
     }
@@ -94,6 +98,9 @@ impl Source<MediaRecord> for MediaSource {
         _: RetrievalRequest<'a>,
     ) -> SourceFuture<'a, Result<RetrievalOutcome<MediaRecord>, OriginError>> {
         Box::pin(async move {
+            // Images and lookahead cannot occupy all six origin slots, leaving
+            // capacity for interactive searches and project-detail requests.
+            let _image_permit = self.transport.image_permit().await?;
             let wire = self
                 .transport
                 .get(self.url.clone(), None, 12 * 1024 * 1024)
@@ -101,23 +108,10 @@ impl Source<MediaRecord> for MediaSource {
             if wire.status == StatusCode::NOT_FOUND {
                 return Ok(RetrievalOutcome::NotFound);
             }
-            let ext = match wire.content_type.as_str() {
-                "image/png" if wire.bytes.starts_with(b"\x89PNG\r\n\x1a\n") => "png",
-                "image/jpeg" if wire.bytes.starts_with(b"\xff\xd8\xff") => "jpg",
-                "image/gif" if wire.bytes.starts_with(b"GIF8") => "gif",
-                "image/webp"
-                    if wire.bytes.starts_with(b"RIFF")
-                        && wire.bytes.get(8..12) == Some(b"WEBP") =>
-                {
-                    "webp"
-                }
-                "image/avif" if wire.bytes.get(4..8) == Some(b"ftyp") => "avif",
-                _ => {
-                    return Err(origin_error(
-                        "This image format cannot be displayed safely.",
-                    ));
-                }
-            };
+            // Validate the representation itself: CDN MIME labels and suffixes
+            // are not always consistent with the delivered raster format.
+            let ext = raster_extension(&wire.bytes)
+                .ok_or_else(|| origin_error("This image format cannot be displayed safely."))?;
             let path = self.root.join(format!("{}.{}", self.id, ext));
             let temporary = path.with_extension("part");
             tokio::fs::write(&temporary, wire.bytes).await?;
@@ -153,4 +147,22 @@ pub async fn prune(root: &Path) -> std::io::Result<()> {
         }
     }
     Ok(())
+}
+
+pub(super) fn raster_extension(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        Some("png")
+    } else if bytes.starts_with(b"\xff\xd8\xff") {
+        Some("jpg")
+    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        Some("gif")
+    } else if bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP") {
+        Some("webp")
+    } else if bytes.get(4..8) == Some(b"ftyp")
+        && matches!(bytes.get(8..12), Some(b"avif" | b"avis"))
+    {
+        Some("avif")
+    } else {
+        None
+    }
 }
