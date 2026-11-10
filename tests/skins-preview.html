@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tachyon Skins verification</title></head><body><div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { mockIPC, mockWindows } from '@tauri-apps/api/mocks';
+import fixture from './generated/skins/library.json';
+import App from '../src/App';
+import '../src/index.css';
+// Rust-sourced offline defaults and a sample import. This harness is
+// isolated from production; native dialogs and OS drop paths are tested in-app.
+window.isTauri = true;
+let library = structuredClone(fixture);
+const trash = [];
+mockIPC(async (command,args) => {
+  if (command === 'skins_library') return structuredClone(library);
+  if (command === 'skins_edit') {
+    const skin = library.skins.find(s => s.id === args.id);
+    if (args.action === 'select') { skin.model = args.model; library.active_id = skin.id; }
+    if (args.action === 'favorite') skin.favorite = !skin.favorite;
+    if (args.action === 'rename') skin.name = args.name;
+    if (args.action === 'remove') { trash.push(skin); library.skins = library.skins.filter(s => s.id !== skin.id); if (library.active_id === skin.id) library.active_id = 'builtin-steve'; }
+    if (args.action === 'undo') library.skins.push(trash.pop());
+    library.can_undo = Boolean(trash.length);
+    return structuredClone(library);
+  }
+  if (command === 'skins_import_player') {
+    if (args.input.toLowerCase() !== 'notch') throw new Error('No Java player was found with that username.');
+    return {library: structuredClone(library), selected_id: library.skins.find(s => s.origin !== 'builtin').id, errors: []};
+  }
+  if (command === 'skins_import_files') return {library:structuredClone(library),selected_id:null,errors:[]};
+  if (command === 'skins_export') { document.body.dataset.exportRequested = args.id; return null; }
+  if (command === 'plugin:app|version') return '0.0.13';
+  if (command === 'plugin:updater|check') return null;
+}, {shouldMockEvents:true});
+window.__TAURI_INTERNALS__.convertFileSrc = path => path;
+mockWindows('main');
+createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null, React.createElement(App)));
+</script></body></html>

@@ -15,6 +15,7 @@ import { RouteBoundary } from "./components/RouteBoundary";
 import { Sidebar } from "@/shell/components/Sidebar";
 
 const ExplorePage = lazy(() => import("@/features/explore/ExplorePage"));
+const SkinsPage = lazy(() => import("@/features/skins/SkinsPage"));
 
 export interface ShellProps {
   children?: ReactNode;
@@ -26,6 +27,7 @@ export function Shell({ children }: ShellProps) {
   const pointerWithinRef = useRef(false);
   const [activeRoute, setActiveRoute] = useState<string>("home");
   const [open, setOpen] = useState(false);
+  const [sidebarMoving, setSidebarMoving] = useState(false);
 
   const lastCollapseTimeRef = useRef(0);
   const cooldownTimerRef = useRef<number | null>(null);
@@ -102,6 +104,8 @@ export function Shell({ children }: ShellProps) {
       <motion.aside
         initial={false}
         animate={{ width: open ? 268 : 80 }}
+        onAnimationStart={() => setSidebarMoving(true)}
+        onAnimationComplete={() => setSidebarMoving(false)}
         transition={reduceMotion ? { duration: 0 } : shellSpring}
         className="shell-rail relative z-20 h-full shrink-0 overflow-hidden pl-3"
         onMouseEnter={handleSidebarMouseEnter}
@@ -128,7 +132,7 @@ export function Shell({ children }: ShellProps) {
       <div className="shell-stage">
         {activeRoute === "explore" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Explore could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Explore…</p></ShellViewport>}>
           <ExplorePage sidebarOpen={open} />
-        </Suspense></RouteBoundary> : <ShellViewport expanded={open}>{children}</ShellViewport>}
+        </Suspense></RouteBoundary> : activeRoute === "skins" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Skins could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Skins…</p></ShellViewport>}><SkinsPage sidebarOpen={open} sidebarMoving={sidebarMoving} /></Suspense></RouteBoundary> : <ShellViewport expanded={open}>{children}</ShellViewport>}
       </div>
     </div>
     </LayoutGroup>

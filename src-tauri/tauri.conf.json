@@ -23,7 +23,8 @@
       "assetProtocol": {
         "enable": true,
         "scope": [
-          "$APPCACHE/explore/media/**"
+          "$APPCACHE/explore/media/**",
+          "$APPDATA/skins/assets/**"
         ]
       }
     }
