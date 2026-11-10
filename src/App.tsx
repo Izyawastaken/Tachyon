@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { UpdateButton } from "./components/UpdateButton";
+import { Shell } from "@/shell/Shell";
+import { UpdateButton } from "@/components/UpdateButton";
 import "./App.css";
 
 export function App() {
-  const [currentVersion, setCurrentVersion] = useState("0.0.1");
+  const [currentVersion, setCurrentVersion] = useState("0.0.10");
 
   useEffect(() => {
     getVersion()
@@ -15,12 +16,12 @@ export function App() {
   }, []);
 
   return (
-    <>
+    <Shell>
       <div className="window-drag-region" data-tauri-drag-region>
         <span className="window-title">Tachyon</span>
       </div>
 
-      <main className="app-container">
+      <div className="app-container">
         <header className="app-header">
           <div className="brand-badge">
             <span className="brand-pulse" />
@@ -52,8 +53,8 @@ export function App() {
         <footer className="app-footer">
           <span>Tachyon • Built with Tauri v2 + React</span>
         </footer>
-      </main>
-    </>
+      </div>
+    </Shell>
   );
 }
 

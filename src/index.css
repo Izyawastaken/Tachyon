@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+@theme {
+  --color-theme-background: var(--theme-background);
+  --color-theme-border: var(--theme-border);
+  --color-theme-surface: var(--theme-surface);
+  --color-theme-secondary: var(--theme-secondary);
+  --color-theme-primary: var(--theme-primary);
+  --color-theme-text: var(--theme-text);
+
+  --color-semantic-success: var(--semantic-success);
+  --color-semantic-warning: var(--semantic-warning);
+  --color-semantic-error: var(--semantic-error);
+  --color-semantic-info: var(--semantic-info);
+
+  --radius-container: var(--radius-container);
+  --radius-card: var(--radius-card);
+  --radius-nested: var(--radius-nested);
+  --radius-button: var(--radius-button);
+  --radius-input: var(--radius-input);
+  --radius-control: var(--radius-control);
+  --radius-pill: var(--radius-pill);
+
+  --text-display: var(--font-display);
+  --text-h1: var(--font-h1);
+  --text-h2: var(--font-h2);
+  --text-h3: var(--font-h3);
+  --text-body: var(--font-body);
+  --text-caption: var(--font-caption);
+
+  --spacing-space-2xs: var(--space-2xs);
+  --spacing-space-xs: var(--space-xs);
+  --spacing-space-sm: var(--space-sm);
+  --spacing-space-md: var(--space-md);
+  --spacing-space-lg: var(--space-lg);
+  --spacing-space-xl: var(--space-xl);
+  --spacing-space-2xl: var(--space-2xl);
+
+  --scale-pressed: var(--scale-pressed);
+  --scale-hover: var(--scale-hover);
+
+  --ease-standard: var(--ease-standard);
+  --ease-enter: var(--ease-enter);
+  --ease-exit: var(--ease-exit);
+
+  --duration-fast: var(--motion-fast);
+  --duration-normal: var(--motion-normal);
+  --duration-slow: var(--motion-slow);
+  --duration-complex: var(--motion-complex);
+}
+
+:root {
+  color-scheme: dark;
+  /* Default Theme Tokens */
+  --theme-background: #0D0807;
+  --theme-border: #211513;
+  --theme-surface: #3E2723;
+  --theme-secondary: #633E38;
+  --theme-primary: #754942;
+  --theme-text: #F3E9E6;
+
+  /* Functional Semantic Status Tokens */
+  --semantic-success: #16A34A;
+  --semantic-warning: #D97706;
+  --semantic-error: #DC2626;
+  --semantic-info: #2563EB;
+
+  /* Rule 1: Radius Scale */
+  --radius-container: 24px;
+  --radius-card: 16px;
+  --radius-nested: 12px;
+  --radius-button: 12px;
+  --radius-input: 10px;
+  --radius-control: 8px;
+  --radius-pill: 999px;
+
+  /* Rule 2: Golden Ratio Proportional Typography Tokens */
+  --font-display: 52px;
+  --font-h1: 32px;
+  --font-h2: 20px;
+  --font-h3: 16px;
+  --font-body: 16px;
+  --font-caption: 12px;
+
+  /* Rule 4: 4px Spacing Rhythm */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* Rule 5: Motion Timing & Easing Curves */
+  --motion-fast: 120ms;
+  --motion-normal: 200ms;
+  --motion-slow: 300ms;
+  --motion-complex: 400ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  --scale-pressed: 0.98;
+  --scale-hover: 1.01;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--theme-background);
+  color: var(--theme-text);
+  overflow: hidden;
+  user-select: none;
+}
