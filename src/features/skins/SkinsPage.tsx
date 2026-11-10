@@ -24,7 +24,7 @@ const SkinPreview = lazy(() => import("./components/SkinPreview"));
 type Filter = "all" | "custom" | "favorites";
 type Method = "upload" | "player" | "texture";
 
-export default function SkinsPage({ sidebarOpen }: { sidebarOpen: boolean }) {
+export default function SkinsPage({ sidebarOpen, sidebarMoving }: { sidebarOpen: boolean; sidebarMoving: boolean }) {
   const reduced = useReducedMotion();
   const [library, setLibrary] = useState<SkinLibrary | null>(null);
   const [selectedId, setSelectedId] = useState("");
@@ -148,7 +148,7 @@ export default function SkinsPage({ sidebarOpen }: { sidebarOpen: boolean }) {
         <div className="skins-fitting-room">
           <div className="skins-preview-label"><span>THE FITTING ROOM</span><span>LIVE 3D</span></div>
           {selected && <>
-            <Suspense fallback={<div className="skins-preview-loading" role="status">Preparing 3D preview…</div>}><SkinPreview skin={selected} model={model} paused={adding} /></Suspense>
+            <Suspense fallback={<div className="skins-preview-loading" role="status">Preparing 3D preview…</div>}><SkinPreview skin={selected} model={model} paused={adding} moving={sidebarMoving} /></Suspense>
             <div className="skins-selection"><div className="skins-selection-heading"><div><p>{selected.origin === "builtin" ? "MINECRAFT ORIGINAL" : selected.origin === "player" ? "PLAYER SKIN" : "YOUR COLLECTION"}</p><h2>{selected.name}</h2></div><span className="skins-resolution">{selected.width} × {selected.height}{selected.height !== selected.width ? " · Legacy" : selected.width > 64 ? " · HD" : ""}</span></div>
               <div className="skins-model" aria-label="Skin model">{([['classic','Classic','4 px arms'],['slim','Slim','3 px arms']] as const).map(([id,label,description]) => <button key={id} type="button" aria-pressed={model === id} onClick={() => setModel(id)}><span>{label}</span><span>{description}</span>{model === id && <Check size={15} />}</button>)}</div>
               <div className="skins-selection-actions"><button type="button" className="skins-use" disabled={Boolean(busy) || active} onClick={() => edit("select")}>{active ? <><Check size={17} />Active in Tachyon</> : "Use skin"}</button><button type="button" className="skins-export" disabled={Boolean(busy)} onClick={() => void run("Exporting skin…", async () => { const path = await exportSkin(selected.id,model); if (path && mounted.current) setMessage("Skin exported as a PNG."); })}><Download size={17} />Export</button>

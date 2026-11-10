@@ -103,3 +103,73 @@ test('a failed local texture can be retried without remounting the page', async 
   await expect(page.locator('.skin-preview-status')).toHaveCount(0, { timeout: 20000 });
   await expect(page.getByRole('button', { name: 'Active in Tachyon' })).toBeDisabled();
 });
+
+test('sidebar morphs hold the visible frame, suspend GPU work, then resize once', async ({ page }) => {
+  await page.addInitScript(() => {
+    const metrics = { draws: 0, resizes: 0, changes: [] as string[] };
+    Object.assign(window, { skinGPU: metrics });
+    for (const dimension of ['width', 'height']) {
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, dimension)!;
+      Object.defineProperty(HTMLCanvasElement.prototype, dimension, {
+        ...descriptor,
+        set(value: number) {
+          if (this.parentElement?.classList.contains('skin-preview-scene') && descriptor.get!.call(this) !== value) { metrics.resizes++; metrics.changes.push(`${dimension}: ${descriptor.get!.call(this)} → ${value} @ ${Math.round(performance.now())}`); }
+          descriptor.set!.call(this, value);
+        },
+      });
+    }
+    for (const type of [WebGLRenderingContext, WebGL2RenderingContext]) {
+      const original = type.prototype.drawElements;
+      type.prototype.drawElements = function (...args) {
+        if (this.canvas instanceof HTMLCanvasElement && this.canvas.parentElement?.classList.contains('skin-preview-scene')) metrics.draws++;
+        return original.apply(this, args);
+      };
+    }
+  });
+  const metrics = () => page.evaluate(() => (window as typeof window & { skinGPU: { draws: number; resizes: number } }).skinGPU);
+  const canvas = page.locator('.skin-preview-scene canvas');
+  const shirtPixels = async () => {
+    const bounds = await canvas.boundingBox();
+    const screenshot = await page.screenshot({ animations: 'allow', clip: bounds! });
+    return page.evaluate(async encoded => {
+      const image = new Image(); image.src = `data:image/png;base64,${encoded}`; await image.decode();
+      const sample = document.createElement('canvas'); sample.width = image.width; sample.height = image.height;
+      const context = sample.getContext('2d')!; context.drawImage(image, 0, 0);
+      const rgba = context.getImageData(0, 0, image.width, image.height).data;
+      let pixels = 0;
+      for (let i = 0; i < rgba.length; i += 4) if (rgba[i] < 100 && rgba[i + 1] > 65 && rgba[i + 1] > rgba[i] * 1.5 && rgba[i + 2] > rgba[i + 1] * .7) pixels++;
+      return pixels;
+    }, screenshot.toString('base64'));
+  };
+  await page.goto('/tests/skins-preview.html');
+  await page.getByRole('button', { name: 'Skins', exact: true }).click();
+  await page.locator('.skins-heading').hover();
+  await expect.poll(() => page.locator('.shell-rail').evaluate(element => Math.round(element.getBoundingClientRect().width))).toBe(80);
+  await expect(page.locator('.skin-preview-status')).toHaveCount(0, { timeout: 20000 });
+  await expect.poll(async () => Math.abs(await canvas.evaluate(c => c.width / Math.min(devicePixelRatio, 1.5) - c.getBoundingClientRect().width))).toBeLessThan(2);
+  expect(await shirtPixels()).toBeGreaterThan(200);
+  for (const expanded of [true, false, true, false]) {
+    const before = await metrics();
+    if (expanded) await page.getByRole('button', { name: 'Tachyon', exact: true }).hover();
+    else await page.locator('.skins-heading').hover();
+    // Observe a real intermediate layout rather than waiting for a finished spring.
+    await expect.poll(() => page.locator('.shell-rail').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(90);
+    const frozen = await metrics();
+    expect(frozen.resizes).toBe(before.resizes);
+    expect(await shirtPixels()).toBeGreaterThan(200);
+    await expect.poll(() => page.locator('.shell-rail').evaluate(element => Math.round(element.getBoundingClientRect().width))).toBe(expanded ? 268 : 80);
+    await expect.poll(async () => Math.abs(await canvas.evaluate(c => c.width / Math.min(devicePixelRatio, 1.5) - c.getBoundingClientRect().width))).toBeLessThan(2);
+    const settled = await metrics();
+    expect(settled.resizes - before.resizes, JSON.stringify(settled)).toBeLessThanOrEqual(2);
+    await expect.poll(async () => (await metrics()).draws).toBeGreaterThan(settled.draws);
+  }
+  // Still mode must also survive the resize and remain idle after its one repaint.
+  await page.getByRole('combobox', { name: 'Preview animation' }).selectOption('still');
+  await page.getByRole('button', { name: 'Tachyon', exact: true }).hover();
+  await expect.poll(() => page.locator('.shell-rail').evaluate(element => Math.round(element.getBoundingClientRect().width))).toBe(268);
+  await expect.poll(async () => Math.abs(await canvas.evaluate(c => c.width / Math.min(devicePixelRatio, 1.5) - c.getBoundingClientRect().width))).toBeLessThan(2);
+  expect(await shirtPixels()).toBeGreaterThan(200);
+  const still = await metrics();
+  await page.waitForTimeout(180);
+  expect((await metrics()).draws).toBe(still.draws);
+});

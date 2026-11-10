@@ -23,7 +23,7 @@ function texture(url: string) {
   return entry.promise;
 }
 
-export default function SkinPreview({ skin, model, paused }: { skin: Skin; model: SkinModel; paused: boolean }) {
+export default function SkinPreview({ skin, model, paused, moving }: { skin: Skin; model: SkinModel; paused: boolean; moving: boolean }) {
   const holder = useRef<HTMLDivElement>(null);
   const viewer = useRef<SkinViewer | null>(null);
   const reduced = useReducedMotion();
@@ -36,29 +36,43 @@ export default function SkinPreview({ skin, model, paused }: { skin: Skin; model
   const [layers, setLayers] = useState(true);
   const [visible, setVisible] = useState(!document.hidden);
   const animate = useRef(false);
+  const resizing = useRef(false);
+  const morphing = useRef(moving);
+  morphing.current = moving;
+  const settleResize = useRef<(() => void) | null>(null);
+  const playback = useRef<{ pause(): void; resume(): void } | null>(null);
   const pointer = useRef(false);
   const animations = useRef<typeof import("skinview3d") | null>(null);
   const source = asset(model === "slim" ? skin.slim_texture : skin.texture);
+  const render = useCallback(() => {
+    const instance = viewer.current;
+    if (instance && !instance.disposed && !resizing.current && !morphing.current && !document.hidden && !instance.renderer.getContext().isContextLost()) instance.render();
+  }, []);
 
   useEffect(() => {
     const element = holder.current!;
     let alive = true;
     let instance: SkinViewer | undefined;
     let resize: ResizeObserver | undefined;
+    let resizeTimer: number | undefined;
     const canvas = document.createElement("canvas");
     canvas.setAttribute("aria-label", "Interactive 3D skin preview. Drag to rotate, scroll to zoom, or use the view controls.");
     canvas.setAttribute("role", "img");
     element.append(canvas);
-    const changed = () => { if (!animate.current && !document.hidden) instance?.render(); };
+    const changed = () => { if (!animate.current) render(); };
     const lost = (event: Event) => { event.preventDefault(); if (alive) { setError("The 3D preview lost its graphics connection. Your skins are still available."); setReady(0); } };
     const down = () => { pointer.current = true; };
     const up = () => { pointer.current = false; };
+    resizing.current = false;
     setError(""); setReady(0); setLoading(true);
     void import("skinview3d").then(module => {
       if (!alive) return;
       animations.current = module;
       instance = new module.SkinViewer({ canvas, width: Math.max(1, element.clientWidth), height: Math.max(1, element.clientHeight), pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5), renderPaused: true, zoom: 0.82, fov: 42 });
       viewer.current = instance;
+      // Keep the last composited frame scaling with the CSS viewport while its
+      // drawing buffer stays untouched throughout a shell spring.
+      canvas.style.width = "100%"; canvas.style.height = "100%";
       instance.controls.enableDamping = false;
       instance.controls.minDistance = 28;
       instance.controls.maxDistance = 120;
@@ -69,15 +83,40 @@ export default function SkinPreview({ skin, model, paused }: { skin: Skin; model
       canvas.addEventListener("webglcontextlost", lost);
       canvas.addEventListener("pointerdown", down);
       window.addEventListener("pointerup", up);
+      const scheduleResize = () => {
+        clearTimeout(resizeTimer);
+        // A slow frame is not the end of a spring. Wait for Motion's actual
+        // completion signal, including interrupted/reversed sidebar animations.
+        if (morphing.current) return;
+        resizeTimer = window.setTimeout(() => {
+          if (!alive || !instance || instance.disposed || morphing.current) return;
+          const { width, height } = element.getBoundingClientRect();
+          const w = Math.round(width), h = Math.round(height);
+          if (w <= 0 || h <= 0) return;
+          // Resizing clears WebGL. Resize and repaint in the same callback.
+          if (w !== instance.width || h !== instance.height) instance.setSize(w, h);
+          canvas.style.width = "100%"; canvas.style.height = "100%";
+          resizing.current = false;
+          render();
+          playback.current?.resume();
+        }, 120);
+      };
+      settleResize.current = scheduleResize;
+      resizing.current = morphing.current;
       resize = new ResizeObserver(entries => {
         const { width, height } = entries[0].contentRect;
-        if (width > 0 && height > 0 && instance && !instance.disposed) { instance.setSize(width, height); changed(); }
+        const w = Math.round(width), h = Math.round(height);
+        if (w <= 0 || h <= 0 || !instance || instance.disposed) return;
+        if (!resizing.current && w === instance.width && h === instance.height) return;
+        resizing.current = true;
+        playback.current?.pause();
+        scheduleResize();
       });
       resize.observe(element);
       setReady(attempt + 1);
     }).catch(() => { if (alive) setError("3D preview is unavailable on this device. You can still select and export skins."); });
     return () => {
-      alive = false; resize?.disconnect();
+      alive = false; resize?.disconnect(); clearTimeout(resizeTimer); settleResize.current = null;
       canvas.removeEventListener("webglcontextlost", lost);
       canvas.removeEventListener("pointerdown", down);
       window.removeEventListener("pointerup", up);
@@ -96,7 +135,12 @@ export default function SkinPreview({ skin, model, paused }: { skin: Skin; model
       }
       viewer.current = null; canvas.remove();
     };
-  }, [attempt]);
+  }, [attempt, render]);
+
+  useEffect(() => {
+    if (moving) { resizing.current = true; playback.current?.pause(); }
+    settleResize.current?.();
+  }, [moving]);
 
   useEffect(() => {
     let intersecting = false;
@@ -115,20 +159,24 @@ export default function SkinPreview({ skin, model, paused }: { skin: Skin; model
     void texture(source).then(image => {
       if (!current || instance.disposed) return;
       instance.loadSkin(image, { model: model === "slim" ? "slim" : "default" });
-      instance.render(); setLoading(false); setError("");
+      render(); setLoading(false); setError("");
     }).catch(() => { if (current) { instance.loadSkin(null); setError("This skin texture could not load. Import the PNG again to repair it."); } });
     return () => { current = false; };
-  }, [source, model, ready]);
+  }, [source, model, ready, render]);
 
   useEffect(() => {
     const instance = viewer.current;
     const module = animations.current;
     if (!ready || !instance || !module) return;
-    instance.playerObject.skin.setOuterLayerVisible(layers);
     instance.animation = reduced || pose === "still" ? null : pose === "walk" ? new module.WalkingAnimation() : new module.IdleAnimation();
     if (instance.animation) instance.animation.speed = pose === "walk" ? 0.8 : 0.65;
+  }, [ready, pose, reduced]);
+
+  useEffect(() => {
+    const instance = viewer.current;
+    if (!ready || !instance) return;
+    instance.playerObject.skin.setOuterLayerVisible(layers);
     const running = !reduced && visible && !paused && !error && (pose !== "still" || rotate);
-    animate.current = running;
     let frame = 0;
     let previous = 0;
     let deadline = 0;
@@ -144,13 +192,18 @@ export default function SkinPreview({ skin, model, paused }: { skin: Skin; model
       if (rotate && !pointer.current) instance.playerWrapper.rotation.y += delta * 0.35;
       instance.controls.update(); instance.render();
     };
-    if (running) frame = requestAnimationFrame(draw);
-    else if (!error && !document.hidden) instance.render();
-    return () => { cancelAnimationFrame(frame); animate.current = false; };
-  }, [ready, pose, rotate, layers, reduced, visible, paused, error]);
+    const pause = () => { cancelAnimationFrame(frame); frame = 0; previous = 0; deadline = 0; animate.current = false; };
+    const resume = () => {
+      if (running && !resizing.current && !morphing.current && !frame) { animate.current = true; frame = requestAnimationFrame(draw); }
+    };
+    playback.current = { pause, resume };
+    resume();
+    if (!running && !error) render();
+    return () => { pause(); playback.current = null; };
+  }, [ready, pose, rotate, layers, reduced, visible, paused, error, render]);
 
-  const turn = useCallback((amount: number) => { const instance = viewer.current; if (instance) { instance.playerWrapper.rotation.y += amount; instance.render(); } }, []);
-  const reset = useCallback(() => { const instance = viewer.current; if (instance) { instance.resetCameraPose(); instance.zoom = 0.82; instance.playerWrapper.rotation.y = -0.35; instance.render(); } }, []);
+  const turn = useCallback((amount: number) => { const instance = viewer.current; if (instance) { instance.playerWrapper.rotation.y += amount; render(); } }, [render]);
+  const reset = useCallback(() => { const instance = viewer.current; if (instance) { instance.resetCameraPose(); instance.zoom = 0.82; instance.playerWrapper.rotation.y = -0.35; render(); } }, [render]);
   return <div className="skin-preview">
     <div className="skin-preview-scene" ref={holder} />
     <div className="skin-orbit" aria-hidden="true"><i /><i /><i /></div>

@@ -30,4 +30,10 @@ The dressing room uses the shell's existing palette, type and corner geometry. A
 - `pnpm test:skins`: generates offline fixtures with Rust, then checks the UI in installed Chrome. Covers actual WebGL rendering, selection, models, favorites, searching, import success/error, rename, undo, export invocation, Escape/focus behavior, narrow layout, reduced motion, and graphics-context loss/retry. Confirms the frontend makes no remote HTTP requests. Native file-dialog interaction itself is outside the isolated browser harness.
 - `pnpm build` and `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`.
 
-The 3D dependency is about 131 KiB gzipped and loads only for the fitting room; the production build reports its normal large-chunk advisory. The application version remains 0.0.13; this branch does not publish a release or alter the existing updater tag.
+The 3D dependency is about 131 KiB gzipped and loads only for the fitting room; the production build reports its normal large-chunk advisory.
+
+## 0.0.14 release refinement
+
+Shell morphs retain the last composited skin frame while CSS scales it to the moving viewport. The drawing buffer and GPU animation loop pause until Motion signals the spring has finished and dimensions have been quiet for 120 ms. Window resizes use the same quiet-period coalescing. The viewer then applies the final dimensions and redraws in the same callback before resuming animation. This prevents each ResizeObserver callback from clearing an already-rendered frame and removes repeated GPU reallocations during the spring. Animation pose survives pause/resume; Still and reduced-motion views get one final repaint.
+
+The browser regression checks actual skin pixels through repeated expansion/collapse, deferred drawing-buffer allocation, resumed animation, and idle Still mode. The release version is 0.0.14, published through the existing signed-updater workflow.
