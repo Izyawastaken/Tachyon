@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { check, type Update, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
+import { isTauri } from "@tauri-apps/api/core";
 
 export type UpdaterStatus =
   | "idle"
@@ -153,9 +154,12 @@ export function useUpdater(options: UseUpdaterOptions = {}): UseUpdaterReturn {
   }, []);
 
   useEffect(() => {
-    if (autoCheckOnMount) {
-      checkForUpdates(true);
+    let active = true;
+    if (autoCheckOnMount && isTauri()) {
+      // Strict Mode replays mount effects; only the active setup starts a request.
+      queueMicrotask(() => { if (active) void checkForUpdates(true); });
     }
+    return () => { active = false; };
   }, [autoCheckOnMount, checkForUpdates]);
 
   return {

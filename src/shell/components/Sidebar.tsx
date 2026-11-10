@@ -412,6 +412,9 @@ export function Sidebar({
 
       {/* Bottom Section (pinned at bottom pb-3 px-3 flex flex-col gap-1) */}
       <div className="pb-3 px-3 flex flex-col gap-1 shrink-0">
+        {/* Only occupies space when the launch check finds an update. */}
+        <UpdateIndicator open={open} />
+
         {/* Settings */}
         <button
           type="button"
@@ -487,8 +490,6 @@ export function Sidebar({
           </span>
         </button>
 
-        {/* Update status indicator */}
-        <UpdateIndicator open={open} />
       </div>
     </aside>
   );
