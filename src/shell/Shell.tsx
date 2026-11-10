@@ -1,5 +1,7 @@
 import {
   useState,
+  lazy,
+  Suspense,
   useRef,
   useCallback,
   useEffect,
@@ -8,7 +10,11 @@ import {
 } from "react";
 import { LayoutGroup, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { shellSpring } from "./motion";
+import { ShellViewport } from "./components/ShellViewport";
+import { RouteBoundary } from "./components/RouteBoundary";
 import { Sidebar } from "@/shell/components/Sidebar";
+
+const ExplorePage = lazy(() => import("@/features/explore/ExplorePage"));
 
 export interface ShellProps {
   children?: ReactNode;
@@ -119,23 +125,11 @@ export function Shell({ children }: ShellProps) {
         />
       </motion.aside>
 
-      {/* Main Viewport Content Container */}
-      <motion.main
-        id="workspace"
-        tabIndex={-1}
-        initial={false}
-        animate={{ borderRadius: open ? 32 : 24 }}
-        transition={reduceMotion ? { duration: 0 } : shellSpring}
-        className="shell-viewport relative z-10 flex-1 min-h-0 min-w-0 overflow-hidden"
-      >
-        <div className="shell-atmosphere" aria-hidden="true">
-          <div className="shell-glow" />
-          <div className="shell-grain" />
-        </div>
-        <div className="relative z-10 h-full w-full overflow-y-auto overflow-x-hidden">
-          {children}
-        </div>
-      </motion.main>
+      <div className="shell-stage">
+        {activeRoute === "explore" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Explore could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Explore…</p></ShellViewport>}>
+          <ExplorePage sidebarOpen={open} />
+        </Suspense></RouteBoundary> : <ShellViewport expanded={open}>{children}</ShellViewport>}
+      </div>
     </div>
     </LayoutGroup>
     </MotionConfig>

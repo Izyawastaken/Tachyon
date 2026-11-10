@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tachyon Explore UI verification</title></head><body><div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { mockIPC } from '@tauri-apps/api/mocks';
+import snapshot from './generated/catalog.json';
+import App from '../src/App';
+import '../src/index.css';
+// Isolated browser test harness. All fixtures and image files were captured by
+// the Rust live-origin smoke test. This page is not an entry in the app build.
+window.isTauri = true;
+mockIPC(async (command, args) => {
+  if (command === 'explore_filters') return snapshot.filters;
+  if (command === 'explore_search') {
+    const input = args.input;
+    const result = structuredClone(snapshot.pages[input.kind]);
+    if (input.query) result.data.hits = result.data.hits.filter(hit => (hit.title + ' ' + hit.description).toLowerCase().includes(input.query.toLowerCase()));
+    if (input.versions.length) result.data.hits = result.data.hits.filter(hit => hit.versions.includes(input.versions[0]));
+    if (input.categories.length) result.data.hits = result.data.hits.filter(hit => hit.categories.includes(input.categories[0]));
+    result.data.offset = input.offset;
+    return result;
+  }
+  if (command === 'explore_image') {
+    const image = snapshot.images[args.url];
+    if (!image) throw new Error('Image absent from Rust smoke-test snapshot');
+    return '/tests/generated/' + image.replace('./', '');
+  }
+  if (command === 'explore_project') {
+    if (args.id !== snapshot.project.data.project.id) throw new Error('Only the first mod detail was captured by the Rust smoke test');
+    return snapshot.project;
+  }
+  if (command === 'plugin:app|version') return '0.0.11';
+  if (command === 'plugin:updater|check') return null;
+}, {shouldMockEvents:true});
+window.__TAURI_INTERNALS__.convertFileSrc = path => path;
+new MutationObserver(() => {
+  const card = document.querySelector('.project-card-quick');
+  if (card) {
+    document.body.dataset.quickLookSeen = card.dataset.projectCard;
+    document.body.dataset.quickLookFootprint = `${card.offsetWidth}x${card.offsetHeight}`;
+  }
+}).observe(document.getElementById('root'), {subtree:true,attributes:true,attributeFilter:['class']});
+createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null, React.createElement(App)));
+</script></body></html>
