@@ -160,3 +160,4 @@ export function useUpdater(options: UseUpdaterOptions = {}): UseUpdaterReturn {
     reset,
   };
 }
+

@@ -54,3 +54,4 @@ const manifest = {
 const outputPath = "./latest.json";
 fs.writeFileSync(outputPath, JSON.stringify(manifest, null, 2) + "\n");
 console.log(`Manifest written to ${outputPath}`);
+

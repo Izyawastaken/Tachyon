@@ -192,3 +192,4 @@ const StatusIcon: React.FC<{ status: UpdaterStatus }> = ({ status }) => {
       );
   }
 };
+
