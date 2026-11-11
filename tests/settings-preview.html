@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Settings preview</title></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { mockIPC, mockWindows } from '@tauri-apps/api/mocks';
+import App from '../src/App';
+import '../src/index.css';
+mockIPC(async command => {
+  if (command === 'home_feed') return { entries: [], sampled: 0, total: 0, stale: false, refresh_after_ms: 240000 };
+  if (command === 'plugin:app|version') return '0.0.14';
+  if (command === 'plugin:updater|check') return null;
+}, { shouldMockEvents: true });
+mockWindows('main');
+createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null, React.createElement(App)));
+</script></body></html>

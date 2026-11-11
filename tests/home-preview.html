@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Home verification</title></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { mockIPC, mockWindows } from '@tauri-apps/api/mocks';
+import App from '../src/App';
+import '../src/index.css';
+window.isTauri = true;
+const mode = new URLSearchParams(location.search).get('mode');
+const names = ['Sodium', 'Distant Horizons', 'Create', 'Serene Seasons', 'Better Combat', 'Farmer’s Delight', 'Supplementaries', 'Alex’s Mobs'];
+const project = (id, name) => ({ id, name, slug: name.toLowerCase().replaceAll(' ', '-'), logo_url: null, summary: 'A small addition that brings new possibilities to your Minecraft world.', downloads_count: 2431, rating: { average: 4.67, bayesian: 3.4, count: 3 } });
+const feeds = { trending: { entries: names.map((name, i) => ({ project: project(i, name), recent_ratings: 8 - i })), refresh_after_ms: 240000, sampled: 36, total: 36, stale: mode === 'stale' }, gems: { entries: ['Monster Booklet', 'Untagged & Untitled'].map((name, i) => ({ project: project(i + 20, name), recent_ratings: 0 })), refresh_after_ms: 240000, sampled: 2, total: 2, stale: false } };
+window.homeCalls = { trending: 0, gems: 0 };
+mockIPC(async (command, args) => {
+  if (command === 'home_feed') {
+    window.homeCalls[args.section]++;
+    if (mode === 'error' && args.section === 'trending' && window.homeCalls.trending === 1) throw new Error('Moddex is temporarily unavailable.');
+    if (mode === 'loading' && args.section === 'trending') await new Promise(resolve => setTimeout(resolve, 10000));
+    return mode === 'empty' ? { ...feeds[args.section], entries: [] } : structuredClone(feeds[args.section]);
+  }
+  if (command === 'plugin:opener|open_url') { document.body.dataset.opened = args.url; return; }
+  if (command === 'plugin:app|version') return '0.0.14';
+  if (command === 'plugin:updater|check') return null;
+  if (command === 'explore_filters') return { data: { versions: [], loaders: [], categories: [] }, stale: false };
+  if (command === 'explore_search') return { data: { hits: [], total_hits: 0, offset: 0, limit: 12 }, stale: false };
+}, { shouldMockEvents: true });
+mockWindows('main');
+createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null, React.createElement(App)));
+</script></body></html>

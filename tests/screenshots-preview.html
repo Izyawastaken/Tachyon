@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Screenshots verification</title></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { mockIPC, mockWindows, mockConvertFileSrc } from '@tauri-apps/api/mocks';
+import App from '../src/App';
+import '../src/index.css';
+window.isTauri = true;
+const mode = new URLSearchParams(location.search).get('mode');
+const now = Date.now();
+const entries = Array.from({ length: 15 }, (_, i) => ({
+  id: String(i), path: `/fixtures/shot-${i}.png`, filename: `2026-11-${String(10 - i % 9).padStart(2, '0')}_18.20.${String(i).padStart(2,'0')}.png`,
+  instance: i % 3 === 0 ? 'Create & Magic' : i % 3 === 1 ? 'Hardcore SMP' : 'Vanilla',
+  instance_id: i % 3 === 0 ? 'create' : i % 3 === 1 ? 'hardcore' : 'vanilla',
+  version: i % 3 === 0 ? '1.20.1' : i % 3 === 1 ? '1.21.1' : null,
+  loader: i % 3 === 0 ? 'Forge' : i % 3 === 1 ? 'Fabric' : null,
+  width: i % 4 === 0 ? 900 : 1920, height: i % 4 === 0 ? 1200 : i % 4 === 1 ? 1920 : 1080,
+  taken_at: now - i * 86400000,
+}));
+window.screenshotCalls = { load: 0, link: 0 };
+const library = () => ({ screenshots: mode === 'empty' ? [] : entries, sources: [{ path: '/instance', name: 'Instance', count: entries.length }], warnings: [] });
+mockIPC(async (command) => {
+  if (command === 'screenshots_library') {
+    window.screenshotCalls.load++;
+    if (mode === 'error' && window.screenshotCalls.load === 1) throw new Error('Screenshot folder is temporarily unavailable.');
+    if (mode === 'loading') await new Promise(resolve => setTimeout(resolve, 15000));
+    return library();
+  }
+  if (command === 'screenshots_link_instance') { window.screenshotCalls.link++; return mode === 'cancel' ? null : library(); }
+  if (command === 'home_feed') return { entries: [], sampled: 0, total: 0, stale: false, refresh_after_ms: 240000 };
+  if (command === 'plugin:app|version') return '0.0.14';
+  if (command === 'plugin:updater|check') return null;
+}, { shouldMockEvents: true });
+mockWindows('main');
+mockConvertFileSrc('windows');
+createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null, React.createElement(App)));
+</script></body></html>

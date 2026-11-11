@@ -1,4 +1,5 @@
 pub(crate) mod downloads;
+pub(crate) mod home;
 mod markdown;
 mod media;
 mod models;
@@ -44,6 +45,7 @@ pub struct ExploreState {
 struct Backend {
     cache: Engram,
     transport: Transport,
+    moddex: Transport,
     media: PathBuf,
     media_requests: AtomicUsize,
     background_slots: Semaphore,
@@ -85,6 +87,7 @@ impl ExploreState {
                 Ok(Arc::new(Backend {
                     cache,
                     transport: Transport::new().map_err(|e| e.to_string())?,
+                    moddex: Transport::new().map_err(|e| e.to_string())?,
                     media,
                     media_requests: AtomicUsize::new(0),
                     background_slots: Semaphore::new(2),

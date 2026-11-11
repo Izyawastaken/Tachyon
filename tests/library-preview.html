@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Library preview</title></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { mockIPC, mockWindows } from '@tauri-apps/api/mocks';
+import App from '../src/App';
+import '../src/index.css';
+window.isTauri = true;
+window.libraryCalls = [];
+const mode = new URLSearchParams(location.search).get('mode');
+mockIPC(async (command, args) => {
+  if (command === 'library_resolve_code') {
+    window.libraryCalls.push({ command, args });
+    if (mode === 'error' && window.libraryCalls.length === 1) throw new Error('GitHub could not be reached. Check your connection and try again.');
+    return 'https://github.com/Izyawastaken/Tachyon';
+  }
+  if (command === 'home_feed') return { entries: [], sampled: 0, total: 0, stale: false, refresh_after_ms: 240000 };
+  if (command === 'plugin:app|version') return '0.0.14';
+  if (command === 'plugin:updater|check') return null;
+  throw new Error(`Unexpected command in UI preview: ${command}`);
+}, { shouldMockEvents: true });
+mockWindows('main');
+createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null, React.createElement(App)));
+</script></body></html>
