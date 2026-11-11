@@ -139,28 +139,8 @@
 .settings-share-code code { font-family: 'Cascadia Code', Consolas, monospace; font-size: 23px; letter-spacing: 2px; margin-right: auto; user-select: all; }
 .settings-icon-button { display: grid; place-items: center; padding: 6px; border: 0; border-radius: 6px; background: none; color: var(--settings-muted); }
 .settings-icon-button:hover { background: var(--settings-input); color: var(--theme-text); }
-.settings-themes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.settings-theme { display: flex; flex-direction: column; gap: 9px; padding: 0; background: none; color: var(--settings-muted); border: 0; text-align: left; min-width: 0; }
-.settings-theme > span:last-child { display: flex; align-items: center; justify-content: space-between; width: 100%; padding-inline: 2px; font-size: 10px; }
-.settings-theme[aria-pressed=true] { color: var(--theme-text); }
-.settings-theme-scene { display: flex; gap: 8px; position: relative; height: 92px; width: 100%; border-radius: 9px; border: 1px solid var(--settings-line); background: var(--swatch-bg); padding: 10px; overflow: hidden; }
-.settings-theme[aria-pressed=true] .settings-theme-scene { outline: 2px solid var(--theme-text); outline-offset: 2px; }
-.settings-theme-rail { display: flex; align-items: center; flex-direction: column; gap: 7px; width: 14px; padding-top: 5px; }
-.settings-theme-rail i { display: block; width: 5px; height: 5px; background: var(--swatch-primary); border-radius: 2px; }
-.settings-theme-rail i:first-child { background: var(--swatch-text); }
-.settings-theme-window { display: flex; flex-direction: column; gap: 6px; flex: 1; border-radius: 5px; background: var(--swatch-surface); padding: 11px 8px; }
-.settings-theme-window i { display: block; height: 4px; background: var(--swatch-primary); border-radius: 2px; width: 82%; }
-.settings-theme-window i:first-child { background: var(--swatch-text); width: 48%; }
-.settings-theme-window i:last-child { width: 61%; }
-.settings-theme-dot { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--swatch-primary); color: var(--swatch-bg); position: absolute; bottom: 15px; right: 13px; }
-.settings-theme-meta { display: flex; justify-content: space-between; gap: 16px; color: var(--settings-faint); font-size: 9px; margin-block: 17px; }
 .settings-text-button { display: inline-flex; gap: 5px; align-items: center; padding: 0; border: 0; background: none; color: var(--settings-muted); font-size: 10px !important; }
 .settings-text-button:hover { color: var(--theme-text); }
-.settings-contrast { display: flex; align-items: center; gap: 13px; padding: 15px; background: var(--settings-panel); border: 1px solid var(--settings-line); border-radius: 10px; }
-.settings-contrast-sample { display: grid; place-items: center; width: 43px; height: 37px; background: var(--theme-background); border-radius: 7px; font-size: 20px; font-weight: 500; letter-spacing: -1px; }
-.settings-contrast strong { font-size: 11px; font-weight: 550; }
-.settings-contrast p { margin: 4px 0 0; font-size: 9px; color: var(--settings-muted); }
-.settings-contrast .settings-chip { margin-left: auto; }
 .settings-dialog { position: fixed; inset: 0; margin: auto; padding: 25px; width: min(480px, calc(100vw - 40px)); max-height: calc(100dvh - 50px); overflow-y: auto; border: 1px solid var(--theme-primary); border-radius: 18px; background: var(--settings-bg); color: var(--theme-text); box-shadow: 0 25px 100px #0009; font-family: inherit; }
 .settings-dialog::backdrop { background: #0009; backdrop-filter: blur(7px); }
 .settings-dialog-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
@@ -182,7 +162,7 @@
 .settings-page[data-density=Compact] .settings-group { margin-top: 19px; }
 .settings-page[data-reduced-motion=true] *, .settings-page[data-reduced-motion=true] *::before, .settings-page[data-reduced-motion=true] *::after { transition: none !important; animation: none !important; }
 @media (min-width: 1500px) { .settings-header { padding-inline: 42px; } .settings-scroll { padding-inline: 44px; } }
-@media (max-width: 1100px) { .settings-scroll { padding-inline: 23px; } .settings-field { padding: 16px; gap: 20px; } .settings-scope-hint { display: none; } .settings-section-reset span { display: none; } .settings-themes { gap: 9px; } .settings-theme-scene { padding: 8px; gap: 4px; } .settings-footer { padding-inline: 23px; } .settings-footer > span:last-child { display: none; } }
+@media (max-width: 1100px) { .settings-scroll { padding-inline: 23px; } .settings-field { padding: 16px; gap: 20px; } .settings-scope-hint { display: none; } .settings-section-reset span { display: none; }   .settings-footer { padding-inline: 23px; } .settings-footer > span:last-child { display: none; } }
 @media (max-width: 850px) {
   .settings-header { padding: 22px 22px 20px; }
   .settings-scope { padding: 13px 0; }
@@ -193,7 +173,7 @@
 @media (max-width: 600px) {
   .settings-header { padding: 20px 17px 17px; } .settings-title-icon { display: none; } .settings-title h1 { font-size: 22px; } .settings-title p { font-size: 10px; max-width: 200px; } .settings-preview-label { font-size: 9px; } .settings-preview-label > span { display: none; } .settings-scope { gap: 8px; } .settings-scope > div:first-child span { display: none; } .settings-scope-hint { font-size: 9px; max-width: 95px; }
   .settings-scroll { padding: 20px 17px 28px; } .settings-category-heading { margin-bottom: 23px; gap: 10px; } .settings-category-heading p { font-size: 11px; } .settings-eyebrow { font-size: 8px; letter-spacing: .8px; } .settings-field { grid-template-columns: minmax(0, 1fr); gap: 11px; padding: 15px; } .settings-field:has(.settings-switch) { grid-template-columns: minmax(0, 1fr) 34px; gap: 15px; } .settings-field-control { justify-content: flex-start; } .settings-field-title label { font-size: 11px; } .settings-field-copy p { font-size: 10px; }
-  .settings-paths > span { grid-template-columns: 15px 1fr; } .settings-paths code { grid-column: 2; } .settings-panel, .settings-detection { padding: 16px; } .settings-stats { gap: 10px; } .settings-stats strong { font-size: 24px; } .settings-stats > div > span { font-size: 9px; } .settings-stats strong small { font-size: 11px; } .settings-action-row { align-items: flex-start; flex-direction: column; gap: 12px; } .settings-action-row .settings-button { align-self: flex-start; } .settings-account { flex-wrap: wrap; } .settings-account > div { min-width: 110px; } .settings-share-code code { width: 100%; margin-bottom: 8px; } .settings-themes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } .settings-theme-scene { height: 98px; padding: 12px; gap: 9px; } .settings-contrast { flex-wrap: wrap; gap: 10px; } .settings-contrast > div { min-width: 120px; } .settings-contrast .settings-chip { margin-left: 0; } .settings-theme-meta { flex-direction: column; gap: 9px; } .settings-chip { font-size: 8px; } .settings-detection > div:first-child { flex-wrap: wrap; } .settings-detection .settings-chip { margin-left: 0; } .settings-detection dl > div { flex-wrap: wrap; gap: 4px; } .settings-memory-preview > span { flex-wrap: wrap; } .settings-memory-preview > span > span { margin-left: 0; } .settings-footer { padding-inline: 17px; font-size: 8px; } .settings-dialog { padding: 21px; } .settings-dialog dl > div { gap: 12px; flex-direction: column; } .settings-dialog dd { text-align: left; max-width: 100%; } .settings-dialog footer { flex-wrap: wrap; } .settings-toast { right: 17px; max-width: calc(100% - 34px); font-size: 10px; }
+  .settings-paths > span { grid-template-columns: 15px 1fr; } .settings-paths code { grid-column: 2; } .settings-panel, .settings-detection { padding: 16px; } .settings-stats { gap: 10px; } .settings-stats strong { font-size: 24px; } .settings-stats > div > span { font-size: 9px; } .settings-stats strong small { font-size: 11px; } .settings-action-row { align-items: flex-start; flex-direction: column; gap: 12px; } .settings-action-row .settings-button { align-self: flex-start; } .settings-account { flex-wrap: wrap; } .settings-account > div { min-width: 110px; } .settings-share-code code { width: 100%; margin-bottom: 8px; }       .settings-chip { font-size: 8px; } .settings-detection > div:first-child { flex-wrap: wrap; } .settings-detection .settings-chip { margin-left: 0; } .settings-detection dl > div { flex-wrap: wrap; gap: 4px; } .settings-memory-preview > span { flex-wrap: wrap; } .settings-memory-preview > span > span { margin-left: 0; } .settings-footer { padding-inline: 17px; font-size: 8px; } .settings-dialog { padding: 21px; } .settings-dialog dl > div { gap: 12px; flex-direction: column; } .settings-dialog dd { text-align: left; max-width: 100%; } .settings-dialog footer { flex-wrap: wrap; } .settings-toast { right: 17px; max-width: calc(100% - 34px); font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .settings-page *, .settings-page *::before, .settings-page *::after { transition: none !important; animation: none !important; } }
 

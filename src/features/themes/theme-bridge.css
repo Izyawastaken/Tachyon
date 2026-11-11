@@ -1,0 +1,35 @@
+/* Shared controls and launcher screens draw from the same six palette roles. */
+:root:root {
+  --background: var(--theme-background);
+  --foreground: var(--theme-text);
+  --card: var(--theme-surface);
+  --card-foreground: var(--theme-text);
+  --popover: var(--theme-surface);
+  --popover-foreground: var(--theme-text);
+  --primary: var(--theme-primary);
+  --primary-foreground: var(--theme-on-primary, var(--theme-text));
+  --secondary: var(--theme-secondary);
+  --secondary-foreground: var(--theme-on-secondary, var(--theme-text));
+  --muted: color-mix(in srgb, var(--theme-text) 7%, var(--theme-background));
+  --muted-foreground: color-mix(in srgb, var(--theme-text) 75%, var(--theme-background));
+  --accent: var(--theme-secondary);
+  --accent-foreground: var(--theme-on-secondary, var(--theme-text));
+  --destructive: var(--semantic-error);
+  --border: color-mix(in srgb, var(--theme-text) 18%, var(--theme-border));
+  --input: var(--border);
+  --ring: var(--theme-text);
+  --sidebar: var(--theme-background);
+  --sidebar-foreground: var(--theme-text);
+  --sidebar-primary: var(--theme-primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--theme-surface);
+  --sidebar-accent-foreground: var(--theme-text);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --semantic-disabled: var(--muted-foreground);
+  --theme-shadow: color-mix(in srgb, var(--theme-background) 78%, transparent);
+}
+/* A light palette needs a light shell as well as a light workspace. */
+:root:not(.dark) .tachyon-shell { --shell-void: color-mix(in srgb, var(--theme-background) 94%, var(--theme-text)); }
+:root[data-density=Compact] { --space-sm: 8px; --space-md: 12px; --space-lg: 20px; --space-xl: 24px; --space-2xl: 36px; }
+:root[data-reduced-motion=true] *, :root[data-reduced-motion=true] *::before, :root[data-reduced-motion=true] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

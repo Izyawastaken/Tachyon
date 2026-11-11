@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { LayoutGroup, MotionConfig, motion, useReducedMotion } from "motion/react";
+import { ThemeProvider, useThemes } from "@/features/themes/ThemeProvider";
 import { shellSpring } from "./motion";
 import { ShellViewport } from "./components/ShellViewport";
 import { RouteBoundary } from "./components/RouteBoundary";
@@ -25,6 +26,7 @@ const SkinsPage = lazy(() => import("@/features/skins/SkinsPage"));
 const ScreenshotsPage = lazy(() => import("@/features/screenshots/ScreenshotsPage"));
 const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
 const SettingsPage = lazy(() => import("@/features/settings/SettingsPage"));
+const ThemesPage = lazy(() => import("@/features/themes/ThemesPage"));
 const Spotlight = lazy(() => import("./components/Spotlight"));
 
 export interface ShellProps {
@@ -32,14 +34,23 @@ export interface ShellProps {
   authClient?: AuthClient;
 }
 
-export function Shell({ children, authClient }: ShellProps) {
+export function Shell(props: ShellProps) {
+  return <ThemeProvider><ShellContent {...props} /></ThemeProvider>;
+}
+
+function ShellContent({ children, authClient }: ShellProps) {
   const auth = useAuth(authClient);
-  const reduceMotion = useReducedMotion();
+  const { preferences } = useThemes();
+  const systemReducedMotion = useReducedMotion();
+  const reduceMotion = systemReducedMotion || preferences.reducedMotion;
   const focusWithinRef = useRef(false);
   const pointerWithinRef = useRef(false);
+  const pointerPressedRef = useRef(false);
+  const pendingCollapseRef = useRef(false);
+  const collapseTimerRef = useRef<number | null>(null);
   const [activeRoute, setActiveRoute] = useState<string>("home");
   const [libraryOpened, setLibraryOpened] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => preferences.sidebar === 'Expanded');
   const [sidebarMoving, setSidebarMoving] = useState(false);
   const [spotlight, setSpotlight] = useState<{ open: boolean; search: string } | null>(null);
   const [settingsTarget, setSettingsTarget] = useState<SettingsNavigation | null>(null);
@@ -63,7 +74,27 @@ export function Shell({ children, authClient }: ShellProps) {
   const cooldownTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    const press = () => { pointerPressedRef.current = true; };
+    const release = () => {
+      pointerPressedRef.current = false;
+      if (pendingCollapseRef.current) {
+        pendingCollapseRef.current = false;
+        if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
+        collapseTimerRef.current = window.setTimeout(() => {
+          if (!pointerWithinRef.current && !focusWithinRef.current) setOpen(false);
+        }, 0);
+      }
+    };
+    window.addEventListener('pointerdown', press, true);
+    window.addEventListener('pointerup', release, true);
+    window.addEventListener('pointercancel', release, true);
+    window.addEventListener('blur', release);
     return () => {
+      window.removeEventListener('pointerdown', press, true);
+      window.removeEventListener('pointerup', release, true);
+      window.removeEventListener('pointercancel', release, true);
+      window.removeEventListener('blur', release);
+      if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
       if (cooldownTimerRef.current !== null) {
         clearTimeout(cooldownTimerRef.current);
       }
@@ -72,6 +103,8 @@ export function Shell({ children, authClient }: ShellProps) {
 
   const handleSidebarMouseEnter = useCallback(() => {
     pointerWithinRef.current = true;
+    pendingCollapseRef.current = false;
+    if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
     if (open) return;
 
     if (cooldownTimerRef.current !== null) {
@@ -99,13 +132,24 @@ export function Shell({ children, authClient }: ShellProps) {
 
     pointerWithinRef.current = false;
     if (!focusWithinRef.current) {
-      setOpen(false);
-      lastCollapseTimeRef.current = Date.now();
+      if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
+      // Let a workspace click finish before changing its target's geometry.
+      collapseTimerRef.current = window.setTimeout(() => {
+        if (pointerPressedRef.current) { pendingCollapseRef.current = true; return; }
+        if (!pointerWithinRef.current && !focusWithinRef.current) {
+          setOpen(false);
+          lastCollapseTimeRef.current = Date.now();
+        }
+      }, 100);
     }
   }, []);
 
   const handleFocusCapture = useCallback((event: FocusEvent<HTMLElement>) => {
-    focusWithinRef.current = event.target.matches(":focus-visible");
+    // Pointer navigation is held open by hover. Only keyboard focus should keep
+    // the drawer expanded after the pointer moves into the workspace.
+    focusWithinRef.current = !pointerWithinRef.current && event.target.matches(":focus-visible");
+    pendingCollapseRef.current = false;
+    if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
     if (cooldownTimerRef.current !== null) {
       clearTimeout(cooldownTimerRef.current);
       cooldownTimerRef.current = null;
@@ -120,13 +164,16 @@ export function Shell({ children, authClient }: ShellProps) {
         clearTimeout(cooldownTimerRef.current);
         cooldownTimerRef.current = null;
       }
-      if (!pointerWithinRef.current) setOpen(false);
+      if (!pointerWithinRef.current) {
+        if (pointerPressedRef.current) pendingCollapseRef.current = true;
+        else setOpen(false);
+      }
       lastCollapseTimeRef.current = Date.now();
     }
   }, []);
 
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion={preferences.reducedMotion ? "always" : "user"}>
     <LayoutGroup id="shell">
     <div className="tachyon-shell relative flex overflow-hidden text-theme-text select-none py-3 pr-3 pl-0 gap-3">
       <a className="shell-skip-link" href="#workspace">Skip to workspace</a>
@@ -173,7 +220,7 @@ export function Shell({ children, authClient }: ShellProps) {
             </Suspense>
           </RouteBoundary>
         </Activity>}
-        {activeRoute === "settings" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Settings could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Settings…</p></ShellViewport>}><SettingsPage sidebarOpen={open} navigationTarget={settingsTarget} onOpenSpotlight={openSpotlight} /></Suspense></RouteBoundary> : activeRoute === "login" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Account could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Account…</p></ShellViewport>}><LoginPage sidebarOpen={open} auth={auth} onHome={() => setActiveRoute("home")} /></Suspense></RouteBoundary> : <>
+        {activeRoute === "themes" ? <RouteBoundary fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="alert">Themes could not load.</p></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Themes...</p></ShellViewport>}><ThemesPage sidebarOpen={open} /></Suspense></RouteBoundary> : activeRoute === "settings" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Settings could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Settings…</p></ShellViewport>}><SettingsPage sidebarOpen={open} navigationTarget={settingsTarget} onOpenSpotlight={openSpotlight} /></Suspense></RouteBoundary> : activeRoute === "login" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Account could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Account…</p></ShellViewport>}><LoginPage sidebarOpen={open} auth={auth} onHome={() => setActiveRoute("home")} /></Suspense></RouteBoundary> : <>
         {activeRoute === "home" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Home could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Home…</p></ShellViewport>}><HomePage sidebarOpen={open} onExplore={() => setActiveRoute("explore")} /></Suspense></RouteBoundary> : activeRoute === "library" ? null : activeRoute === "explore" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Explore could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Explore…</p></ShellViewport>}>
           <ExplorePage sidebarOpen={open} />
         </Suspense></RouteBoundary> : activeRoute === "skins" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Skins could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Skins…</p></ShellViewport>}><SkinsPage sidebarOpen={open} sidebarMoving={sidebarMoving} /></Suspense></RouteBoundary> : activeRoute === "screenshots" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Screenshots could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Screenshots…</p></ShellViewport>}><ScreenshotsPage sidebarOpen={open} /></Suspense></RouteBoundary> : <ShellViewport expanded={open}>{children}</ShellViewport>}

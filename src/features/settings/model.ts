@@ -1,6 +1,6 @@
 export type SettingValue = string | number | boolean;
 export type Values = Record<string, SettingValue>;
-export type CategoryId = 'general' | 'java' | 'instances' | 'network' | 'storage' | 'cache' | 'sharing' | 'servers' | 'appearance' | 'accounts' | 'privacy' | 'advanced';
+export type CategoryId = 'general' | 'java' | 'instances' | 'network' | 'storage' | 'cache' | 'sharing' | 'servers' | 'accounts' | 'privacy' | 'advanced';
 
 export interface Setting {
   id: string;
@@ -157,13 +157,6 @@ export const CATEGORIES: Category[] = [
       select('restart', 'Restart on crash', 'Choose how Docker recovers an unexpectedly stopped server.', 'On failure', ['Never', 'On failure', 'Unless stopped']),
     ] },
   ] },
-  { id: 'appearance', label: 'Appearance', description: 'Find your shade. Give the launcher a little of your personality.', groups: [
-    { title: 'Comfort & layout', fields: [
-      toggle('reducedMotion', 'Reduced motion', 'Preview quieter transitions on this settings page.', false),
-      select('sidebar', 'Default sidebar state', 'Preferred launcher navigation state on your next launch.', 'Rail', ['Rail', 'Expanded']),
-      select('density', 'Interface density', 'Preview the spacing of settings controls.', 'Comfortable', ['Comfortable', 'Compact']),
-    ] },
-  ] },
   { id: 'accounts', label: 'Accounts', description: 'Who you play as, and what follows you between worlds.', groups: [
     { title: 'Offline play', fields: [
       select('offlineMode', 'Offline account policy', 'Offline play uses a previously verified account. Unverified profiles are clearly labeled.', 'Verified accounts only', ['Verified accounts only', 'Allow unverified local profiles']),
@@ -200,19 +193,12 @@ export interface PreviewState {
   version: 1;
   global: Values;
   overrides: Record<string, Values>;
-  theme: string;
 }
 export function pairedMemoryOverrides(global: Values, values: Values): Values {
   if (!Object.prototype.hasOwnProperty.call(values, 'memoryMin') && !Object.prototype.hasOwnProperty.call(values, 'memoryMax')) return values;
   return { ...values, memoryMin: values.memoryMin ?? global.memoryMin, memoryMax: values.memoryMax ?? global.memoryMax };
 }
-export const THEMES = [
-  { id: 'beni', name: 'Dark Beni', background: '#150e11', border: '#28171e', surface: '#3c222c', secondary: '#69404b', primary: '#a16776', text: '#f4e8ed' },
-  { id: 'crimson', name: 'Dusk Crimson', background: '#160c0e', border: '#30191d', surface: '#482329', secondary: '#743b43', primary: '#b36a70', text: '#f7e9e7' },
-  { id: 'plum', name: 'Deep Plum', background: '#130f19', border: '#251e30', surface: '#392d47', secondary: '#5d496f', primary: '#9e83b1', text: '#eee8f5' },
-  { id: 'pink', name: 'Pink', background: '#25171f', border: '#3c2633', surface: '#563548', secondary: '#80536e', primary: '#d29ab9', text: '#fff0f8' },
-];
-export const freshState = (): PreviewState => ({ version: 1, global: { ...DEFAULTS }, overrides: {}, theme: 'current' });
+export const freshState = (): PreviewState => ({ version: 1, global: { ...DEFAULTS }, overrides: {} });
 
 // Only known keys and valid values enter the prototype, including after import.
 function validValue(field: Setting, value: unknown): value is SettingValue {
@@ -244,7 +230,6 @@ export function parseState(value: unknown): PreviewState {
       result.overrides[instance.id] = pairedMemoryOverrides(result.global, result.overrides[instance.id]);
     }
   }
-  result.theme = source.theme === 'current' || THEMES.some(theme => theme.id === source.theme) ? source.theme : 'current';
   for (const values of [result.global, ...INSTANCES.map(instance => ({ ...result.global, ...result.overrides[instance.id] }))]) {
     if (Number(values.memoryMin) > Number(values.memoryMax)) throw new Error('Minimum memory cannot exceed maximum memory.');
   }
@@ -262,15 +247,3 @@ export const JVM_PRESETS: Record<string, string> = {
   GraalVM: '-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI',
   ZGC: '-XX:+UseZGC',
 };
-
-export function contrastRatio(foreground: string, background: string): number {
-  const luminance = (hex: string) => {
-    const rgb = hex.replace('#', '').match(/.{2}/g)!.map(channel => {
-      const value = parseInt(channel, 16) / 255;
-      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-    });
-    return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
-  };
-  const a = luminance(foreground), b = luminance(background);
-  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-}

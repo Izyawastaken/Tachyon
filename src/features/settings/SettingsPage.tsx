@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Activity, ArrowUpRight, Box, Check, CheckCheck, ChevronDown, Coffee, Database, GitBranch, Globe, HardDrive, Info, Link, RotateCcw, Search, Server, Settings2, Shield, Sparkles, Sprout, UserRound, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Activity, ArrowUpRight, Box, Check, ChevronDown, Coffee, Database, GitBranch, Globe, HardDrive, Info, Link, RotateCcw, Search, Server, Settings2, Shield, Sparkles, Sprout, UserRound, X } from 'lucide-react';
 import { ShellViewport } from '@/shell/components/ShellViewport';
 import { ActionRow, PreviewDialog, SettingField, SettingsButton, SettingsNote, type PreviewAction } from './components';
-import { CATEGORIES, DEFAULTS, INSTANCES, JVM_PRESETS, STORAGE_KEY, THEMES, contrastRatio, loadState, pairedMemoryOverrides, parseState, type Category, type CategoryId, type Setting, type SettingValue } from './model';
+import { CATEGORIES, DEFAULTS, INSTANCES, JVM_PRESETS, STORAGE_KEY, loadState, pairedMemoryOverrides, parseState, type Category, type CategoryId, type Setting, type SettingValue } from './model';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { GooeyNav } from './GooeyNav';
 import { CATEGORY_ICONS as ICONS, type SettingsNavigation } from './navigation';
+import { useThemes } from '@/features/themes/ThemeProvider';
 import './SettingsPage.css';
 
 const downloadJson = (filename: string, value: unknown) => {
@@ -46,8 +47,7 @@ export default function SettingsPage({ sidebarOpen, navigationTarget, onOpenSpot
   const dataVolume = String(global.dataDir).match(/^([a-z]):[\\/]/i)?.[1].toUpperCase();
   const gardenVolume = String(global.gardenPath).match(/^([a-z]):[\\/]/i)?.[1].toUpperCase();
   const sameVolume = Boolean(dataVolume && gardenVolume && dataVolume === gardenVolume);
-  const theme = THEMES.find(item => item.id === state.theme);
-  const themeStyle = theme ? Object.fromEntries(['background', 'border', 'surface', 'secondary', 'primary', 'text'].map(key => [`--theme-${key}`, theme[key as keyof typeof theme]])) as CSSProperties : undefined;
+  const { preferences } = useThemes();
   const overrideCount = Object.keys(state.overrides[scope] ?? {}).length;
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function SettingsPage({ sidebarOpen, navigationTarget, onOpenSpot
     const timeout = window.setTimeout(() => setNotice(''), 5000);
     return () => clearTimeout(timeout);
   }, [notice]);
-  const reduced = systemReduced || Boolean(global.reducedMotion);
+  const reduced = systemReduced || preferences.reducedMotion;
   useEffect(() => {
     if (navigationTarget) setCategoryId(navigationTarget.categoryId);
   }, [navigationTarget]);
@@ -132,7 +132,7 @@ export default function SettingsPage({ sidebarOpen, navigationTarget, onOpenSpot
   }
   function resetSection(category: Category) {
     const fields = category.groups.flatMap(group => group.fields);
-    setAction({ title: `Reset ${category.label.toLowerCase()}?`, description: instance ? `Remove this section’s overrides for ${instance.name}. Launcher-wide preferences in this section are unchanged.` : 'Restore this section’s global defaults. Other sections and instance overrides are kept.', items: [{ label: 'Scope', value: instance?.name ?? 'Global defaults' }, { label: 'Settings affected', value: String(fields.filter(field => !instance || field.instance).length + (!instance && category.id === 'appearance' ? 1 : 0)) }], confirm: 'Reset section', danger: true, onConfirm: () => {
+    setAction({ title: `Reset ${category.label.toLowerCase()}?`, description: instance ? `Remove this section’s overrides for ${instance.name}. Launcher-wide preferences in this section are unchanged.` : 'Restore this section’s global defaults. Other sections and instance overrides are kept.', items: [{ label: 'Scope', value: instance?.name ?? 'Global defaults' }, { label: 'Settings affected', value: String(fields.filter(field => !instance || field.instance).length) }], confirm: 'Reset section', danger: true, onConfirm: () => {
       setState(current => {
         if (instance) {
           const overrides = { ...current.overrides[scope] }; fields.forEach(field => { if (field.instance) delete overrides[field.id]; });
@@ -140,7 +140,7 @@ export default function SettingsPage({ sidebarOpen, navigationTarget, onOpenSpot
         }
         const next = { ...current.global }; fields.forEach(field => { next[field.id] = DEFAULTS[field.id]; });
         if (category.id === 'general' && current.global.gardenPath === `${String(current.global.dataDir)}\\garden`) next.gardenPath = DEFAULTS.gardenPath;
-        return { ...current, global: next, theme: category.id === 'appearance' ? 'current' : current.theme };
+        return { ...current, global: next };
       }); notify(`${category.label} preview settings reset.`);
     } });
   }
@@ -185,20 +185,15 @@ export default function SettingsPage({ sidebarOpen, navigationTarget, onOpenSpot
         <section className="settings-panel"><div className="settings-panel-title"><div><h3>A small code. A shared world.</h3><p>{instance ? instance.name : 'Select an instance to manage its share code.'} · Sample code</p></div><Link size={23} /></div><div className="settings-share-code"><code>{shareCode}</code><SettingsButton disabled={!instance} onClick={() => void copyCode()}>Copy code</SettingsButton><SettingsButton disabled={!instance} onClick={() => setAction({ title: 'Regenerate share code?', description: 'The old sample code stops working. Anyone with it would need your new code.', items: [{ label: 'Old code', value: shareCode }, { label: 'Access granted', value: String(effective.shareRights) }], confirm: 'Regenerate sample code', danger: true, onConfirm: () => { setShareCodes(current => ({ ...current, [scope]: `MOSS-${crypto.randomUUID().slice(0, 4).toUpperCase()}` })); notify('Sample share code regenerated.'); } })}>Regenerate</SettingsButton></div><SettingsNote icon={<Shield size={16} />}><p>{effective.shareRights === 'Read-only' ? 'Read-only: recipients can view and install the pack. They cannot change it.' : 'PR rights: recipients can propose changes. Merge behavior follows the approval setting above.'}</p></SettingsNote></section>
       </>;
       case 'servers': return <SettingsNote icon={<Server size={18} />}><strong>Docker Desktop · sample detection</strong><p>Local named pipe · Engine 27.3 · 8 CPUs / 16 GB available. The preview does not connect to Docker or create containers.</p></SettingsNote>;
-      case 'appearance': {
-        const ratio = contrastRatio(theme?.text ?? '#F3E9E6', theme?.background ?? '#0D0807');
-        const surfaceRatio = contrastRatio(theme?.text ?? '#F3E9E6', theme?.surface ?? '#3E2723');
-        return <section className="settings-theme-panel"><div className="settings-group-heading"><h3>Your kind of dark.</h3><p>Theme previews apply to this page. Your launcher theme stays available.</p></div><div className="settings-themes">{THEMES.map(item => <button type="button" key={item.id} className="settings-theme" aria-pressed={state.theme === item.id} onClick={() => setState(current => ({ ...current, theme: item.id }))} style={{ '--swatch-bg': item.background, '--swatch-surface': item.surface, '--swatch-primary': item.primary, '--swatch-text': item.text } as CSSProperties}><span className="settings-theme-scene" aria-hidden="true"><span className="settings-theme-rail"><i /><i /><i /></span><span className="settings-theme-window"><i /><i /><i /></span><span className="settings-theme-dot">{state.theme === item.id && <Check size={12} />}</span></span><span>{item.name}{state.theme === item.id && <Check size={13} />}</span></button>)}</div><div className="settings-theme-meta"><button type="button" className="settings-text-button" onClick={() => setState(current => ({ ...current, theme: 'current' }))}><RotateCcw size={12} />Use launcher theme</button><span>{state.theme === 'current' ? 'Using launcher theme' : `Previewing ${theme?.name}`}</span></div><div className="settings-contrast"><span className="settings-contrast-sample">Aa</span><div><strong>Contrast checker</strong><p>Text / background {ratio.toFixed(2)}:1 · Text / surface {surfaceRatio.toFixed(2)}:1</p></div><span className="settings-chip"><CheckCheck size={13} />{Math.min(ratio, surfaceRatio) >= 4.5 ? 'WCAG AA' : 'Below AA'}</span></div></section>;
-      }
       case 'accounts': return <section className="settings-panel"><div className="settings-panel-title"><div><h3>Microsoft accounts</h3><p>Sample profiles only · no real authentication</p></div><UserRound size={22} /></div>{accounts.map(account => <div className="settings-account" key={account}><span className="settings-avatar">{account.slice(0, 1)}</span><div><strong>{account}</strong><p>{defaultAccount === account ? 'Default account · sample verified profile' : 'Sample verified profile'}</p></div>{defaultAccount !== account && <SettingsButton label={`Make ${account} default`} onClick={() => { setDefaultAccount(account); notify('Default sample account updated.'); }}>Make default</SettingsButton>}<button className="settings-icon-button" type="button" aria-label={`Remove ${account}`} onClick={() => setAction({ title: `Remove ${account}?`, description: 'Remove this sample profile from the preview. No Microsoft account or game entitlement is changed.', confirm: 'Remove sample account', danger: true, onConfirm: () => { setAccounts(current => current.filter(item => item !== account)); if (defaultAccount === account) setDefaultAccount(accounts.find(item => item !== account) ?? ''); notify('Sample account removed.'); } })}><X size={15} /></button></div>)}<ActionRow title="Add a Microsoft account" description="Preview a second profile without signing in." action="Add sample account" disabled={accounts.includes('MossExplorer')} onClick={() => { setAccounts(current => [...current, 'MossExplorer']); if (!defaultAccount) setDefaultAccount('MossExplorer'); notify('Sample Microsoft profile added.'); }} /><ActionRow title="Skin cache" description={skinsCleared ? 'No sample skins cached.' : '24 cached skins · 3.6 MB · available offline.'} action="Preview clear" onClick={() => setAction({ title: 'Clear cached skins?', description: 'Skins would download again when the account is online. Your saved skins and profiles are kept.', items: [{ label: 'Space to free', value: skinsCleared ? '0 MB' : '3.6 MB' }], confirm: 'Clear sample skins', danger: true, onConfirm: () => { setSkinsCleared(true); notify('Sample skin cache cleared.'); } })} /></section>;
       case 'privacy': return <section className="settings-panel"><ActionRow title="Logs folder" description="Preview where launcher logs are stored." action="Open logs folder" onClick={() => setAction({ title: 'Logs folder', description: 'The full launcher would reveal this folder in your file manager.', items: [{ label: 'Sample location', value: `${String(global.dataDir)}\\logs` }] })} /><ActionRow title="Redacted debug bundle" description="Review the contents before exporting a sample support bundle." action="Preview export" onClick={() => setAction({ title: 'Export a redacted debug bundle', description: 'Create a small JSON file with synthetic diagnostics. Account identifiers, tokens, user paths, environment variables, and hooks are excluded.', items: [{ label: 'Included', value: 'Sample launcher status, log level, storage health' }, { label: 'Excluded', value: 'Personal data, credentials, real logs, game files' }, { label: 'Contents', value: 'Synthetic preview data only' }], confirm: 'Export sample bundle', onConfirm: () => { downloadJson('tachyon-debug-preview.json', { preview: true, launcher: 'Tachyon', diagnostics: { logLevel: global.logLevel, filesystem: 'Sample NTFS', integrity: verified ? 'Sample verified' : 'Not scanned', orphanedReferences: pruned ? 0 : 12 }, logs: ['[INFO] Synthetic settings preview started.'], redacted: ['account identifiers', 'tokens', 'user paths', 'environment variables', 'hooks'] }); notify('Sample debug bundle exported.'); } })} /></section>;
       case 'advanced': return <section className="settings-panel"><ActionRow title="Raw configuration" description="Preview the config file location for the full launcher." action="Reveal in file manager" onClick={() => setAction({ title: 'Raw configuration file', description: 'The full launcher would reveal this file in your file manager. This UI preview saves preferences separately in local browser storage.', items: [{ label: 'Sample file location', value: `${String(global.dataDir)}\\config.toml` }] })} /><ActionRow title="Export all settings" description="Download your prototype preferences and instance overrides as JSON. Review custom paths and commands before sharing." action="Export settings" onClick={() => { downloadJson('tachyon-settings-preview.json', state); notify('Preview settings exported.'); }} /><ActionRow title="Import settings" description="Preview a settings export before replacing local preferences." action="Choose file" onClick={() => importer.current?.click()} /><SettingsNote icon={<RotateCcw size={16} />}><p>Each section has its own reset button. In an instance scope, resetting removes that section’s overrides and restores inheritance.</p></SettingsNote></section>;
     }
   }
 
-  return <ShellViewport expanded={sidebarOpen} scrollable={false}><div className="settings-page" data-density={global.density} data-reduced-motion={Boolean(global.reducedMotion)} style={themeStyle}>
+  return <ShellViewport expanded={sidebarOpen} scrollable={false}><div className="settings-page" data-density={preferences.density} data-reduced-motion={preferences.reducedMotion}>
     <header className="settings-header"><div className="settings-title"><span className="settings-title-icon"><Settings2 size={22} strokeWidth={1.5} /></span><div><h1>Settings</h1><p>A little fine-tuning. Your kind of launcher.</p></div></div><div className="settings-header-actions"><span className="settings-preview-label"><span />Interactive preview</span><button type="button" className="settings-spotlight-trigger" aria-label="Find a setting" onClick={() => onOpenSpotlight('. ')}><Search size={15} /><span>Find a setting</span><kbd>{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌥ Space' : 'Ctrl Space'}</kbd></button></div></header>
-    <GooeyNav active={categoryId} onSelect={navigate} reducedMotion={Boolean(global.reducedMotion)} />
+    <GooeyNav active={categoryId} onSelect={navigate} reducedMotion={preferences.reducedMotion} />
     <div className="settings-layout">
     <div className="settings-workspace"><div className="settings-scope"><div><Globe size={15} /><span>Editing</span></div><div className="settings-select"><select aria-label="Settings scope" value={scope} onChange={event => setScope(event.target.value)}><option value="global">Global defaults</option>{INSTANCES.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown size={13} /></div><span className="settings-scope-hint">{instance ? `${overrideCount} overrides` : 'Applies to every instance'}</span></div>
       <div className="settings-scroll" ref={scroll}><AnimatePresence mode="wait" initial={false}>
@@ -206,7 +201,6 @@ export default function SettingsPage({ sidebarOpen, navigationTarget, onOpenSpot
         const Icon = ICONS[category.id];
         return <motion.section className="settings-category" key={category.id} initial={{ opacity: 0, y: reduced ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reduced ? 0 : -8 }} transition={{ duration: reduced ? .08 : .2, ease: [.2, .8, .2, 1] }} onAnimationComplete={revealTarget} aria-labelledby={`settings-category-${category.id}`}><div className="settings-category-heading"><div><span className="settings-eyebrow"><Icon size={13} />{instance ? 'INSTANCE PREFERENCES' : 'LAUNCHER PREFERENCES'}</span><h2 id={`settings-category-${category.id}`} tabIndex={-1}>{category.label}</h2><p>{category.description}</p></div><button type="button" className="settings-section-reset" aria-label={`Reset ${category.label} section`} title="Reset this section" onClick={() => resetSection(category)}><RotateCcw size={14} /><span>Reset section</span></button></div>
           {instance && !category.groups.some(group => group.fields.some(field => field.instance)) && <SettingsNote icon={<Globe size={15} />}><p>These preferences apply to the launcher. Game settings in Java, Instances, and Sharing can be overridden per instance.</p></SettingsNote>}
-          {category.id === 'appearance' && <div id={`settings-panels-${category.id}`} tabIndex={-1}>{specialPanels(category)}</div>}
           {category.groups.map(group => {
             const fields = group.fields;
             if (!fields.length) return null;
@@ -216,7 +210,7 @@ export default function SettingsPage({ sidebarOpen, navigationTarget, onOpenSpot
               return <SettingField key={field.id} field={field} value={values[field.id]} onChange={value => setValue(field, value)} instance={Boolean(instance)} overridden={Boolean(instance && Object.prototype.hasOwnProperty.call(state.overrides[scope] ?? {}, field.id))} onReset={() => resetField(field)} disabled={disabled} />;
             })}</div></section>;
           })}
-          {category.id !== 'appearance' && <div id={`settings-panels-${category.id}`} tabIndex={-1}>{specialPanels(category)}</div>}
+          <div id={`settings-panels-${category.id}`} tabIndex={-1}>{specialPanels(category)}</div>
           {category.id === 'general' && global.channel === 'Nightly' && <SettingsNote icon={<Sparkles size={16} />}><p>Nightly builds can introduce breaking changes. Your selected channel is a preview preference.</p></SettingsNote>}
           {category.id === 'network' && global.hash === 'Disabled' && <SettingsNote icon={<Shield size={16} />}><p>With verification disabled, corrupt or modified downloads would not be rejected by a hash check.</p></SettingsNote>}
         </motion.section>;

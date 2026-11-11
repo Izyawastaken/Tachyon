@@ -16,6 +16,7 @@ import { ChevronRightIcon } from "@animateicons/react/lucide/chevron-right-icon"
 import { SettingsIcon } from "@animateicons/react/lucide/settings-icon";
 import { LogInIcon } from "@animateicons/react/lucide/log-in-icon";
 import { UserRound } from "lucide-react";
+import { PaintbrushIcon } from "@animateicons/react/lucide/paintbrush-icon";
 import { useIconHover } from "@animateicons/react";
 import { BookshelfIcon } from "@/core/components/ui/icons/BookshelfIcon";
 import { motion } from "motion/react";
@@ -52,6 +53,8 @@ export const PRIMARY_NAV_ITEMS: readonly NavItem[] = [
   { id: "skins", label: "Skins", icon: PaletteIcon },
   { id: "screenshots", label: "Screenshots", icon: CameraIcon },
 ];
+
+const THEMES_NAV_ITEM: NavItem = { id: "themes", label: "Themes", icon: PaintbrushIcon };
 
 export const INITIAL_INSTANCES: readonly InstanceItem[] = [
   { id: "vanilla", name: "Vanilla 1.21.4", version: "1.21.4" },
@@ -417,6 +420,8 @@ export function Sidebar({
       <div className="pb-3 px-3 flex flex-col gap-1 shrink-0">
         {/* Only occupies space when the launch check finds an update. */}
         <UpdateIndicator open={open} />
+
+        <NavButton item={THEMES_NAV_ITEM} isActive={activeId === "themes"} open={open} onClick={() => handleSelect("themes")} />
 
         {/* Settings */}
         <button

@@ -3,7 +3,7 @@ import { Command, defaultFilter } from 'cmdk';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowDown, ArrowRight, ArrowUp, CornerDownLeft, House, Compass, Library, Camera, Palette, Search, Settings2, X } from 'lucide-react';
 import { CATEGORY_ICONS, SETTINGS_COMMANDS, type SettingsDestination } from '@/features/settings/navigation';
-import { loadState } from '@/features/settings/model';
+import { useThemes } from '@/features/themes/ThemeProvider';
 import './Spotlight.css';
 
 export type SpotlightSelection = { kind: 'settings'; destination: SettingsDestination } | { kind: 'route'; route: string };
@@ -12,6 +12,7 @@ const ROUTES = [
   { id: 'explore', label: 'Explore', description: 'Find your next addition.', icon: Compass },
   { id: 'library', label: 'Library', description: 'All your little universes.', icon: Library },
   { id: 'skins', label: 'Skins', description: 'A different look for your next adventure.', icon: Palette },
+  { id: 'themes', label: 'Themes', description: 'Canvas, colors, motion, and layout preferences.', icon: Palette },
   { id: 'screenshots', label: 'Screenshots', description: 'Moments worth keeping.', icon: Camera },
 ];
 export default function Spotlight({ open, initialSearch, onOpenChange, onSelect }: {
@@ -22,16 +23,15 @@ export default function Spotlight({ open, initialSearch, onOpenChange, onSelect 
   const pending = useRef<SpotlightSelection | null>(null);
   const origin = useRef<HTMLElement | null>(null);
   const [query, setQuery] = useState(initialSearch);
-  const [localReduced, setLocalReduced] = useState(() => Boolean(loadState().global.reducedMotion));
+  const { preferences } = useThemes();
   const systemReduced = useReducedMotion();
-  const reduced = systemReduced || localReduced;
+  const reduced = systemReduced || preferences.reducedMotion;
   const settingsMode = query.trimStart().startsWith('.');
 
   useEffect(() => {
     if (!open) return;
     pending.current = null;
     setQuery(initialSearch);
-    setLocalReduced(Boolean(loadState().global.reducedMotion));
     if (!dialog.current?.open) {
       origin.current = document.activeElement as HTMLElement | null;
       dialog.current?.showModal();
@@ -60,7 +60,7 @@ export default function Spotlight({ open, initialSearch, onOpenChange, onSelect 
           <div className="spotlight-input-row"><span className={`spotlight-mode${settingsMode ? ' is-settings' : ''}`} aria-hidden="true">{settingsMode ? <span>.</span> : <Search size={21} strokeWidth={1.6} />}</span><Command.Input ref={input} aria-label="Spotlight search" placeholder="Where would you like to go?" value={query} onValueChange={setQuery} spellCheck={false} autoComplete="off" autoCorrect="off" /><button type="button" className="spotlight-close" aria-label="Close Spotlight" onClick={() => onOpenChange(false)}><X size={16} /><kbd>esc</kbd></button></div>
           <div className="spotlight-context"><span>{settingsMode ? 'SETTINGS' : 'QUICK JUMP'}</span><span>{settingsMode ? 'Find a preference. Make it yours.' : <>Type <kbd>.</kbd> to search settings</>}</span></div>
           <Command.List label="Spotlight results">
-            <Command.Empty><Search size={25} strokeWidth={1.4} /><strong>{settingsMode ? 'No matching settings.' : 'Looking for a setting?'}</strong><p>{settingsMode ? 'Try . JVM, . memory, . theme, or . prune.' : <>Start with a dot: <b>. {query.trim() || 'JVM'}</b></>}</p>{!settingsMode && <button type="button" onClick={() => { setQuery(`. ${query.trim()}`); input.current?.focus(); }}>Search settings<ArrowRight size={13} /></button>}</Command.Empty>
+            <Command.Empty><Search size={25} strokeWidth={1.4} /><strong>{settingsMode ? 'No matching settings.' : 'Looking for a setting?'}</strong><p>{settingsMode ? 'Try . JVM, . memory, . cache, or . prune.' : <>Start with a dot: <b>. {query.trim() || 'JVM'}</b></>}</p>{!settingsMode && <button type="button" onClick={() => { setQuery(`. ${query.trim()}`); input.current?.focus(); }}>Search settings<ArrowRight size={13} /></button>}</Command.Empty>
             {settingsMode ? <>
               {SETTINGS_COMMANDS.map(category => {
                 const Icon = CATEGORY_ICONS[category.id];

@@ -198,15 +198,18 @@ test('prune previews are cancellable and cache layers clear independently', asyn
   await expect(page.getByText('Sample bundled snapshot · 2026-11-11 · 82,416 projects')).toBeVisible();
 });
 
-test('theme preview, contrast, density and motion work at narrow widths', async ({ page }) => {
+test('global themes, contrast, density and motion work at narrow widths', async ({ page }) => {
   await page.setViewportSize({ width: 600, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await open(page); await section(page, 'Appearance');
-  await page.getByRole('button', { name: 'Deep Plum', exact: true }).click();
-  await expect(page.locator('.settings-page')).toHaveCSS('--theme-background', '#130f19');
-  await expect(page.getByText('WCAG AA', { exact: true })).toBeVisible();
+  await open(page);
+  await expect(page.getByRole('navigation', { name: 'Settings categories' }).getByRole('button', { name: 'Appearance', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Themes', exact: true }).click();
+  await page.getByRole('button', { name: 'Use Deep Plum', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'plum');
   await page.getByRole('combobox', { name: 'Interface density' }).selectOption('Compact');
   await page.getByRole('switch', { name: 'Reduced motion' }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.locator('.settings-page')).toHaveCSS('--theme-background', '#130F19');
   await expect(page.locator('.settings-page')).toHaveAttribute('data-density', 'Compact');
   await expect(page.locator('.settings-page')).toHaveAttribute('data-reduced-motion', 'true');
   expect(await page.locator('.settings-page').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
@@ -249,7 +252,7 @@ test('data paths expose hardlink consequences and very narrow categories stay co
   await page.getByRole('textbox', { name: 'Shared store location' }).fill('C:\\OtherGarden');
   await expect(page.getByText('These locations cannot be confirmed to share a filesystem.', { exact: false })).toBeVisible();
   await page.setViewportSize({ width: 480, height: 900 });
-  for (const name of ['General', 'Java & runtime', 'Garden & pots', 'Engram & Decker', 'Appearance', 'Sharing & Obscura', 'Accounts', 'Advanced']) {
+  for (const name of ['General', 'Java & runtime', 'Garden & pots', 'Engram & Decker', 'Sharing & Obscura', 'Accounts', 'Advanced']) {
     await section(page, name);
     expect(await page.locator('.settings-scroll').evaluate(el => el.scrollWidth <= el.clientWidth), name).toBe(true);
   }
