@@ -149,11 +149,12 @@ impl Transport {
             .await
             .map_err(|_| origin_error("Catalog is closing."))?;
         if now() < self.retry_at.load(Ordering::Relaxed) {
-            return Err(origin_error(
-                "Modrinth is rate limiting requests. Try again shortly.",
-            ));
+            return Err(origin_error("The catalog is busy. Try again shortly."));
         }
-        let mut request = self.client.get(url);
+        let mut request = self
+            .client
+            .get(url)
+            .header("X-Client", concat!("Tachyon/", env!("CARGO_PKG_VERSION")));
         if let Some(meta) = validation {
             if let Some(etag) = &meta.etag {
                 request = request.header(header::IF_NONE_MATCH, etag);
@@ -165,20 +166,22 @@ impl Transport {
             }
         }
         let response = request.send().await.map_err(|_| {
-            origin_error("Could not reach Modrinth. Check your connection and retry.")
+            origin_error("Could not reach the catalog. Check your connection and retry.")
         })?;
-        if response.status() == StatusCode::TOO_MANY_REQUESTS {
+        if matches!(
+            response.status(),
+            StatusCode::TOO_MANY_REQUESTS | StatusCode::SERVICE_UNAVAILABLE
+        ) {
             let delay = response
                 .headers()
                 .get(header::RETRY_AFTER)
                 .and_then(|v| v.to_str().ok())
                 .and_then(|v| v.parse::<u64>().ok())
                 .unwrap_or(30)
-                .clamp(1, 300);
-            self.retry_at.store(now() + delay, Ordering::Relaxed);
-            return Err(origin_error(
-                "Modrinth is rate limiting requests. Try again shortly.",
-            ));
+                .max(1);
+            self.retry_at
+                .store(now().saturating_add(delay), Ordering::Relaxed);
+            return Err(origin_error("The catalog is busy. Try again shortly."));
         }
         let status = response.status();
         let metadata = ValidationMetadata {
@@ -199,7 +202,7 @@ impl Transport {
             && !status.is_success()
         {
             return Err(origin_error(format!(
-                "Modrinth returned {}. Try again later.",
+                "The catalog returned {}. Try again later.",
                 status.as_u16()
             )));
         }
@@ -267,7 +270,7 @@ impl<T: DeserializeOwned> JsonSource<T> {
             return Ok(RetrievalOutcome::NotFound);
         }
         let value = serde_json::from_slice(&wire.bytes)
-            .map_err(|_| origin_error("Modrinth returned an unreadable catalog response."))?;
+            .map_err(|_| origin_error("The catalog returned an unreadable catalog response."))?;
         Ok(RetrievalOutcome::Retrieved(Retrieved {
             value,
             validation: Some(wire.metadata),

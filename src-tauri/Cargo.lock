@@ -2600,6 +2600,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "neutrino-obscura"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cef9b38af679e67c45c7676859cf5fdfa63a9aa1a6ce2317ba2a4d2cc2350cd"
+
+[[package]]
 name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4369,12 +4375,14 @@ dependencies = [
 
 [[package]]
 name = "tachyon"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "ammonia",
  "base64 0.22.1",
+ "chrono",
  "engram-cache",
  "lol_html",
+ "neutrino-obscura",
  "png",
  "pulldown-cmark",
  "reqwest",

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Account verification</title></head>
+<body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { Shell } from '../src/shell/Shell';
+import { mockAuthClient } from '../src/features/auth/api';
+import '../src/index.css';
+import '../src/App.css';
+const mode = new URLSearchParams(location.search).get('mode');
+let failSignIn = mode === 'sign-in-error';
+let failSignOut = mode === 'sign-out-error';
+const completions = [];
+window.completeSignIn = index => completions[index]({ profile: { id: 'demo', name: 'TachyonPlayer' }, provider: 'mock-microsoft' });
+const client = {
+  async signIn(options) {
+    if (failSignIn) { failSignIn = false; throw new Error('Simulated sign-in failure'); }
+    // Intentionally ignores cancellation to verify late results are discarded.
+    if (mode === 'manual') return new Promise(resolve => completions.push(resolve));
+    return mockAuthClient.signIn(options);
+  },
+  async signOut(session, options) {
+    if (failSignOut) { failSignOut = false; throw new Error('Simulated sign-out failure'); }
+    return mockAuthClient.signOut(session, options);
+  },
+};
+createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null, React.createElement(Shell, { authClient: client })));
+</script></body>
+</html>

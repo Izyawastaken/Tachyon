@@ -1,5 +1,7 @@
 mod explore;
 mod skins;
+mod screenshots;
+mod library;
 use tauri::Manager;
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -10,6 +12,9 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            app.manage(screenshots::ScreenshotsState::new(
+                app.path().app_data_dir()?.join("screenshots"),
+            ));
             app.manage(skins::SkinsState::new(
                 app.path().app_data_dir()?.join("skins"),
                 app.path().app_cache_dir()?.join("skins"),
@@ -25,6 +30,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            library::library_resolve_code,
+            screenshots::screenshots_library,
+            screenshots::screenshots_link_instance,
+            explore::home::home_feed,
             explore::explore_search,
             explore::explore_project,
             explore::explore_filters,

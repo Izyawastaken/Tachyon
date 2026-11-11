@@ -15,6 +15,7 @@ import { PlusIcon } from "@animateicons/react/lucide/plus-icon";
 import { ChevronRightIcon } from "@animateicons/react/lucide/chevron-right-icon";
 import { SettingsIcon } from "@animateicons/react/lucide/settings-icon";
 import { LogInIcon } from "@animateicons/react/lucide/log-in-icon";
+import { UserRound } from "lucide-react";
 import { useIconHover } from "@animateicons/react";
 import { BookshelfIcon } from "@/core/components/ui/icons/BookshelfIcon";
 import { motion } from "motion/react";
@@ -40,6 +41,7 @@ export interface SidebarProps {
   activeId?: string;
   onSelect?: (id: string) => void;
   onLoginClick?: () => void;
+  accountName?: string;
   className?: string;
 }
 
@@ -185,6 +187,7 @@ export function Sidebar({
   activeId: externalActiveId,
   onSelect,
   onLoginClick,
+  accountName,
   className,
 }: SidebarProps) {
   const [internalActiveId, setInternalActiveId] = useState<string>("home");
@@ -459,7 +462,7 @@ export function Sidebar({
             handleSelect("login");
             onLoginClick?.();
           }}
-          aria-label="Login"
+          aria-label={accountName ? "Account" : "Login"}
           aria-current={activeId === "login" ? "page" : undefined}
           {...loginHover.triggerProps}
           className={cn(
@@ -468,17 +471,17 @@ export function Sidebar({
               ? "bg-theme-surface text-theme-text font-medium shadow-sm"
               : "text-theme-text/75 hover:text-theme-text hover:bg-theme-secondary/20 font-normal"
           )}
-          title="Login"
+          title={accountName ? `Account: ${accountName}` : "Login"}
         >
           <div className="flex h-5 w-5 shrink-0 items-center justify-center pointer-events-none">
-            <LogInIcon
+            {accountName ? <UserRound size={18} aria-hidden="true" /> : <LogInIcon
               ref={loginHover.ref}
               size={18}
               className={cn(
                 "transition-colors duration-[150ms] ease-out",
                 activeId === "login" ? "text-theme-text" : "text-theme-text/75"
               )}
-            />
+            />}
           </div>
           <span
             className={cn(
@@ -486,7 +489,7 @@ export function Sidebar({
               open ? "opacity-100" : "opacity-0 pointer-events-none"
             )}
           >
-            Login
+            {accountName ?? "Login"}
           </span>
         </button>
 

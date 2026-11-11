@@ -1,4 +1,5 @@
 import {
+  Activity,
   useState,
   lazy,
   Suspense,
@@ -13,19 +14,29 @@ import { shellSpring } from "./motion";
 import { ShellViewport } from "./components/ShellViewport";
 import { RouteBoundary } from "./components/RouteBoundary";
 import { Sidebar } from "@/shell/components/Sidebar";
+import { useAuth } from "@/features/auth/useAuth";
+import type { AuthClient } from "@/features/auth/api";
 
+const HomePage = lazy(() => import("@/features/home/HomePage"));
+const LibraryPage = lazy(() => import("@/features/library/LibraryPage"));
 const ExplorePage = lazy(() => import("@/features/explore/ExplorePage"));
 const SkinsPage = lazy(() => import("@/features/skins/SkinsPage"));
+const ScreenshotsPage = lazy(() => import("@/features/screenshots/ScreenshotsPage"));
+const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
+const SettingsPage = lazy(() => import("@/features/settings/SettingsPage"));
 
 export interface ShellProps {
   children?: ReactNode;
+  authClient?: AuthClient;
 }
 
-export function Shell({ children }: ShellProps) {
+export function Shell({ children, authClient }: ShellProps) {
+  const auth = useAuth(authClient);
   const reduceMotion = useReducedMotion();
   const focusWithinRef = useRef(false);
   const pointerWithinRef = useRef(false);
   const [activeRoute, setActiveRoute] = useState<string>("home");
+  const [libraryOpened, setLibraryOpened] = useState(false);
   const [open, setOpen] = useState(false);
   const [sidebarMoving, setSidebarMoving] = useState(false);
 
@@ -125,14 +136,27 @@ export function Shell({ children }: ShellProps) {
           open={open}
           setOpen={setOpen}
           activeId={activeRoute}
-          onSelect={setActiveRoute}
+          onSelect={route => {
+            if (route === "library") setLibraryOpened(true);
+            setActiveRoute(route);
+          }}
+          accountName={auth.session?.profile.name}
         />
       </motion.aside>
 
       <div className="shell-stage">
-        {activeRoute === "explore" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Explore could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Explore…</p></ShellViewport>}>
+        {libraryOpened && <Activity mode={activeRoute === "library" ? "visible" : "hidden"}>
+          <RouteBoundary fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="alert">Library could not load.</p></ShellViewport>}>
+            <Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Library…</p></ShellViewport>}>
+              <LibraryPage sidebarOpen={open} active={activeRoute === "library"} />
+            </Suspense>
+          </RouteBoundary>
+        </Activity>}
+        {activeRoute === "settings" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Settings could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Settings…</p></ShellViewport>}><SettingsPage sidebarOpen={open} /></Suspense></RouteBoundary> : activeRoute === "login" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Account could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Account…</p></ShellViewport>}><LoginPage sidebarOpen={open} auth={auth} onHome={() => setActiveRoute("home")} /></Suspense></RouteBoundary> : <>
+        {activeRoute === "home" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Home could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Home…</p></ShellViewport>}><HomePage sidebarOpen={open} onExplore={() => setActiveRoute("explore")} /></Suspense></RouteBoundary> : activeRoute === "library" ? null : activeRoute === "explore" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Explore could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Explore…</p></ShellViewport>}>
           <ExplorePage sidebarOpen={open} />
-        </Suspense></RouteBoundary> : activeRoute === "skins" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Skins could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Skins…</p></ShellViewport>}><SkinsPage sidebarOpen={open} sidebarMoving={sidebarMoving} /></Suspense></RouteBoundary> : <ShellViewport expanded={open}>{children}</ShellViewport>}
+        </Suspense></RouteBoundary> : activeRoute === "skins" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Skins could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Skins…</p></ShellViewport>}><SkinsPage sidebarOpen={open} sidebarMoving={sidebarMoving} /></Suspense></RouteBoundary> : activeRoute === "screenshots" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Screenshots could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Screenshots…</p></ShellViewport>}><ScreenshotsPage sidebarOpen={open} /></Suspense></RouteBoundary> : <ShellViewport expanded={open}>{children}</ShellViewport>}
+        </>}
       </div>
     </div>
     </LayoutGroup>

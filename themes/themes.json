@@ -1,0 +1,31 @@
+{
+    "Themes": {
+        "Espresso": {
+            "Family": "darkmode",
+            "Color1": "0D0807",
+            "Color2": "211513",
+            "Color3": "3E2723",
+            "Color4": "633E38",
+            "Color5": "754942",
+            "text": "F3E9E6"
+        },
+        "Sakura_Milk": {
+            "Family": "lightmode",
+            "Color1": "EB9EB5",
+            "Color2": "EFB0C3",
+            "Color3": "F4C9D6",
+            "Color4": "FBE9EF",
+            "Color5": "FEF9FA",
+            "text": "3A1F2B"
+        },
+        "Almond_Milk": {
+            "Family": "lightmode",
+            "Color1": "EDE4D2",
+            "Color2": "F0E9DA",
+            "Color3": "F5F0E6",
+            "Color4": "FBF9F5",
+            "Color5": "FEFDFC",
+            "text": "2B241D"
+        }
+    }
+}
