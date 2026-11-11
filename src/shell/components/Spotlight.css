@@ -1,0 +1,49 @@
+.spotlight-dialog {
+  --spotlight-bg: color-mix(in srgb, var(--theme-background) 86%, var(--theme-surface));
+  --spotlight-muted: color-mix(in srgb, var(--theme-text) 64%, var(--theme-background));
+  --spotlight-line: color-mix(in srgb, var(--theme-text) 10%, transparent);
+  position: fixed; inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; padding: 24px 24px clamp(24px, 7dvh, 84px); margin: 0; border: 0; background: transparent; color: var(--theme-text); overflow: hidden; font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+}
+.spotlight-dialog[open] { display: grid; place-items: end center; }
+.spotlight-dialog::backdrop { background: #0008; backdrop-filter: blur(7px); transition: background 180ms, backdrop-filter 180ms; }
+.spotlight-dialog[data-state=closing]::backdrop { background: #0000; backdrop-filter: blur(0); }
+.spotlight-panel { width: min(660px, 100%); max-height: 100%; overflow: hidden; transform-origin: center bottom; border: 1px solid color-mix(in srgb, var(--theme-text) 17%, transparent); border-radius: 24px; background: var(--spotlight-bg); box-shadow: 0 24px 90px #0007, inset 0 1px color-mix(in srgb, var(--theme-text) 5%, transparent); }
+.spotlight-panel [cmdk-root] { display: flex; flex-direction: column; max-height: calc(100dvh - 140px); }
+.spotlight-panel button, .spotlight-panel input { font: inherit; }
+.spotlight-panel button { cursor: pointer; }
+.spotlight-panel :is(button, input):focus-visible { outline: 2px solid var(--theme-text); outline-offset: 3px; }
+.spotlight-input-row { display: flex; align-items: center; gap: 15px; padding: 24px 25px 20px; flex-shrink: 0; }
+.spotlight-mode { display: grid; place-items: center; width: 26px; height: 30px; flex-shrink: 0; color: var(--spotlight-muted); }
+.spotlight-mode.is-settings { border: 1px solid var(--spotlight-line); border-radius: 8px; background: var(--theme-surface); color: var(--theme-text); font-size: 30px; line-height: .7; font-weight: 600; }
+.spotlight-mode.is-settings > span { transform: translateY(-6px); }
+.spotlight-input-row [cmdk-input] { width: 100%; min-width: 0; border: 0; background: none; color: var(--theme-text); font-size: 20px; letter-spacing: -.5px; padding: 0; outline: none !important; user-select: text; }
+.spotlight-input-row [cmdk-input]::placeholder { color: var(--spotlight-muted); }
+.spotlight-close { display: flex; gap: 6px; align-items: center; border: 0; padding: 4px; background: none; color: var(--spotlight-muted); }
+.spotlight-close > svg { display: none; }
+.spotlight-panel kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 19px; padding: 0 4px; border: 1px solid var(--spotlight-line); background: color-mix(in srgb, var(--theme-surface) 18%, transparent); border-radius: 5px; color: var(--spotlight-muted); font-family: inherit; font-size: 10px; line-height: 1; }
+.spotlight-context { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 0 25px 16px; border-bottom: 1px solid var(--spotlight-line); color: var(--spotlight-muted); font-size: 10px; flex-shrink: 0; }
+.spotlight-context > span:first-child { font-size: 9px; font-weight: 600; letter-spacing: 1.4px; }
+.spotlight-context > span:last-child { display: flex; gap: 5px; align-items: center; }
+.spotlight-panel [cmdk-list] { height: min(var(--cmdk-list-height), 380px); min-height: 100px; max-height: min(380px, calc(100dvh - 315px)); padding: 10px; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; scrollbar-width: thin; scrollbar-color: var(--theme-surface) transparent; transition: height 240ms cubic-bezier(.2, .8, .2, 1); }
+.spotlight-panel [cmdk-group-heading] { padding: 10px 13px 6px; font-size: 9px; font-weight: 500; color: var(--spotlight-muted); }
+.spotlight-panel [cmdk-group][hidden] { display: none; }
+.spotlight-panel [cmdk-item] { display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 10px 12px; border-radius: 12px; cursor: pointer; scroll-margin-block: 10px; color: var(--spotlight-muted); transition: background 120ms, color 120ms; }
+.spotlight-panel [cmdk-item][data-selected=true] { color: var(--theme-text); background: color-mix(in srgb, var(--theme-surface) 80%, transparent); }
+.spotlight-result-icon { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--spotlight-line); border-radius: 9px; flex-shrink: 0; font-size: 24px; }
+.spotlight-result-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.spotlight-result-copy strong { color: var(--theme-text); font-size: 12px; font-weight: 500; }
+.spotlight-result-copy small { color: var(--spotlight-muted); font-size: 10px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.spotlight-result-trail { display: flex; align-items: center; gap: 10px; font-size: 9px; flex-shrink: 0; }
+.spotlight-result-trail > svg { opacity: 0; }
+.spotlight-panel [data-selected=true] .spotlight-result-trail > svg { opacity: 1; }
+.spotlight-panel [cmdk-empty] { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 35px 18px; min-height: 180px; text-align: center; color: var(--spotlight-muted); }
+.spotlight-panel [cmdk-empty] strong { margin-top: 15px; font-weight: 500; font-size: 14px; color: var(--theme-text); }
+.spotlight-panel [cmdk-empty] p { margin: 7px 0 0; font-size: 11px; }
+.spotlight-panel [cmdk-empty] b { font-weight: 500; color: var(--theme-text); }
+.spotlight-panel [cmdk-empty] button { display: flex; align-items: center; gap: 6px; margin-top: 15px; padding: 7px 10px; border: 1px solid var(--spotlight-line); border-radius: 7px; background: var(--theme-surface); color: var(--theme-text); font-size: 11px; }
+.spotlight-footer { display: flex; align-items: center; gap: 18px; padding: 13px 24px 16px; border-top: 1px solid var(--spotlight-line); color: var(--spotlight-muted); flex-shrink: 0; }
+.spotlight-footer > span { display: flex; align-items: center; gap: 5px; font-size: 10px; }
+.spotlight-footer > span:last-child { margin-left: auto; }
+.spotlight-dialog[data-reduced-motion=true]::backdrop, .spotlight-dialog[data-reduced-motion=true] * { transition: none; }
+@media (max-width: 600px) { .spotlight-dialog { padding: 12px 12px 24px; } .spotlight-panel { border-radius: 20px; } .spotlight-input-row { padding: 20px 18px 17px; gap: 10px; } .spotlight-input-row [cmdk-input] { font-size: 17px; } .spotlight-context { padding-inline: 18px; font-size: 9px; } .spotlight-result-trail > span { display: none; } .spotlight-panel [cmdk-item] { padding-inline: 8px; gap: 9px; } .spotlight-footer { padding-inline: 18px; gap: 12px; } .spotlight-result-copy strong { font-size: 11px; } .spotlight-close > svg { display: block; } .spotlight-close kbd { display: none; } }
+@media (prefers-reduced-motion: reduce) { .spotlight-dialog::backdrop, .spotlight-dialog * { transition: none; } }

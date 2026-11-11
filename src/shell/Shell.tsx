@@ -16,6 +16,7 @@ import { RouteBoundary } from "./components/RouteBoundary";
 import { Sidebar } from "@/shell/components/Sidebar";
 import { useAuth } from "@/features/auth/useAuth";
 import type { AuthClient } from "@/features/auth/api";
+import type { SettingsNavigation } from "@/features/settings/navigation";
 
 const HomePage = lazy(() => import("@/features/home/HomePage"));
 const LibraryPage = lazy(() => import("@/features/library/LibraryPage"));
@@ -24,6 +25,7 @@ const SkinsPage = lazy(() => import("@/features/skins/SkinsPage"));
 const ScreenshotsPage = lazy(() => import("@/features/screenshots/ScreenshotsPage"));
 const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
 const SettingsPage = lazy(() => import("@/features/settings/SettingsPage"));
+const Spotlight = lazy(() => import("./components/Spotlight"));
 
 export interface ShellProps {
   children?: ReactNode;
@@ -39,6 +41,23 @@ export function Shell({ children, authClient }: ShellProps) {
   const [libraryOpened, setLibraryOpened] = useState(false);
   const [open, setOpen] = useState(false);
   const [sidebarMoving, setSidebarMoving] = useState(false);
+  const [spotlight, setSpotlight] = useState<{ open: boolean; search: string } | null>(null);
+  const [settingsTarget, setSettingsTarget] = useState<SettingsNavigation | null>(null);
+  const settingsRequest = useRef(0);
+  const openSpotlight = useCallback((search = '') => setSpotlight({ open: true, search }), []);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+      const modifier = mac ? event.altKey && !event.ctrlKey && !event.metaKey : event.ctrlKey && !event.altKey && !event.metaKey;
+      if ((event.code !== 'Space' && event.key !== ' ') || !modifier || event.shiftKey || event.repeat || event.isComposing) return;
+      event.preventDefault();
+      if (document.querySelector('dialog[open]:not(.spotlight-dialog), [role="dialog"][aria-modal="true"]')) return;
+      setSpotlight(current => current?.open ? { ...current, open: false } : { open: true, search: '' });
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
 
   const lastCollapseTimeRef = useRef(0);
   const cooldownTimerRef = useRef<number | null>(null);
@@ -137,6 +156,8 @@ export function Shell({ children, authClient }: ShellProps) {
           setOpen={setOpen}
           activeId={activeRoute}
           onSelect={route => {
+            if (route === "search") { openSpotlight(); return; }
+            setSettingsTarget(null);
             if (route === "library") setLibraryOpened(true);
             setActiveRoute(route);
           }}
@@ -152,12 +173,22 @@ export function Shell({ children, authClient }: ShellProps) {
             </Suspense>
           </RouteBoundary>
         </Activity>}
-        {activeRoute === "settings" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Settings could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Settings…</p></ShellViewport>}><SettingsPage sidebarOpen={open} /></Suspense></RouteBoundary> : activeRoute === "login" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Account could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Account…</p></ShellViewport>}><LoginPage sidebarOpen={open} auth={auth} onHome={() => setActiveRoute("home")} /></Suspense></RouteBoundary> : <>
+        {activeRoute === "settings" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Settings could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Settings…</p></ShellViewport>}><SettingsPage sidebarOpen={open} navigationTarget={settingsTarget} onOpenSpotlight={openSpotlight} /></Suspense></RouteBoundary> : activeRoute === "login" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Account could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Account…</p></ShellViewport>}><LoginPage sidebarOpen={open} auth={auth} onHome={() => setActiveRoute("home")} /></Suspense></RouteBoundary> : <>
         {activeRoute === "home" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Home could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Home…</p></ShellViewport>}><HomePage sidebarOpen={open} onExplore={() => setActiveRoute("explore")} /></Suspense></RouteBoundary> : activeRoute === "library" ? null : activeRoute === "explore" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Explore could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Explore…</p></ShellViewport>}>
           <ExplorePage sidebarOpen={open} />
         </Suspense></RouteBoundary> : activeRoute === "skins" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Skins could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Skins…</p></ShellViewport>}><SkinsPage sidebarOpen={open} sidebarMoving={sidebarMoving} /></Suspense></RouteBoundary> : activeRoute === "screenshots" ? <RouteBoundary fallback={<ShellViewport expanded={open}><div className="shell-route-loading" role="alert"><p>Screenshots could not load.</p><button type="button" onClick={() => window.location.reload()}>Reload Tachyon</button></div></ShellViewport>}><Suspense fallback={<ShellViewport expanded={open}><p className="shell-route-loading" role="status">Opening Screenshots…</p></ShellViewport>}><ScreenshotsPage sidebarOpen={open} /></Suspense></RouteBoundary> : <ShellViewport expanded={open}>{children}</ShellViewport>}
         </>}
       </div>
+      {spotlight && <Suspense fallback={null}><Spotlight open={spotlight.open} initialSearch={spotlight.search} onOpenChange={next => setSpotlight(current => current ? { ...current, open: next } : null)} onSelect={selection => {
+        if (selection.kind === 'settings') {
+          setSettingsTarget({ ...selection.destination, requestId: ++settingsRequest.current });
+          setActiveRoute('settings');
+        } else {
+          setSettingsTarget(null);
+          if (selection.route === 'library') setLibraryOpened(true);
+          setActiveRoute(selection.route);
+        }
+      }} /></Suspense>}
     </div>
     </LayoutGroup>
     </MotionConfig>

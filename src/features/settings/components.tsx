@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ArrowUpRight, Check, ChevronDown, RotateCcw, X } from 'lucide-react';
 import type { Setting, SettingValue } from './model';
+import { actionTarget } from './navigation';
 
 export function SettingsButton({ children, onClick, disabled, primary, danger, label }: { children: ReactNode; onClick: () => void; disabled?: boolean; primary?: boolean; danger?: boolean; label?: string }) {
   return <button type="button" className={`settings-button${primary ? ' is-primary' : ''}${danger ? ' is-danger' : ''}`} onClick={onClick} disabled={disabled} aria-label={label}>{children}</button>;
@@ -12,7 +13,7 @@ export function SettingField({ field, value, onChange, instance, overridden, onR
 }) {
   const id = `setting-${field.id}`;
   const description = `${id}-description`;
-  return <div className={`settings-field${field.type === 'textarea' || field.id.endsWith('Dir') || field.id.endsWith('Path') ? ' is-wide' : ''}`} data-disabled={disabled || undefined} data-setting={field.id}>
+  return <div id={`settings-field-${field.id}`} tabIndex={-1} className={`settings-field${field.type === 'textarea' || field.id.endsWith('Dir') || field.id.endsWith('Path') ? ' is-wide' : ''}`} data-disabled={disabled || undefined} data-setting={field.id}>
     <div className="settings-field-copy">
       <div className="settings-field-title"><label htmlFor={id}>{field.label}</label>
         {instance && field.instance && <span className={`settings-inheritance${overridden ? ' is-overridden' : ''}`}>{overridden ? 'Overridden' : 'Inherited'}</span>}
@@ -40,7 +41,7 @@ export function SettingsNote({ children, icon }: { children: ReactNode; icon?: R
 }
 
 export function ActionRow({ title, description, action, onClick, disabled }: { title: string; description: string; action: string; onClick: () => void; disabled?: boolean }) {
-  return <div className="settings-action-row"><div><h4>{title}</h4><p>{description}</p></div><SettingsButton onClick={onClick} disabled={disabled}>{action}<ArrowUpRight size={13} /></SettingsButton></div>;
+  return <div id={actionTarget(title)} tabIndex={-1} className="settings-action-row"><div><h4>{title}</h4><p>{description}</p></div><SettingsButton onClick={onClick} disabled={disabled}>{action}<ArrowUpRight size={13} /></SettingsButton></div>;
 }
 
 export interface PreviewAction {

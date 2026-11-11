@@ -9,6 +9,79 @@ async function open(page: Page) {
 }
 const section = (page: Page, name: string) => page.getByRole('navigation', { name: 'Settings categories' }).getByRole('button', { name, exact: true }).click();
 
+test('global CMDK spotlight rises from the bottom and reveals JVM controls from Home', async ({ page }) => {
+  await page.goto('/tests/settings-preview.html');
+  await expect(page.getByRole('navigation', { name: 'Primary Navigation' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toHaveCount(0);
+  await page.keyboard.press('Control+Space');
+  const palette = page.getByRole('dialog', { name: 'Tachyon Spotlight' });
+  const search = palette.getByRole('combobox', { name: 'Spotlight search' });
+  await expect(search).toBeFocused();
+  await search.fill('JVM');
+  await expect(palette.getByRole('option', { name: 'JVM argument preset', exact: true })).toHaveCount(0);
+  await search.fill('. JVM');
+  await expect(palette.getByRole('option', { name: 'JVM argument preset', exact: true })).toBeVisible();
+  const box = await page.locator('.spotlight-panel').boundingBox();
+  expect(box!.y).toBeGreaterThan(250);
+  await page.screenshot({ path: 'tests/generated/settings-spotlight.png' });
+  await page.keyboard.press('ArrowDown');
+  await expect(palette.locator('[cmdk-item][data-selected=true]')).toHaveCount(1);
+  await palette.getByRole('option', { name: 'JVM argument preset', exact: true }).click();
+  await expect(palette).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Java & runtime', exact: true })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'JVM argument preset' })).toBeFocused();
+  await expect(page.locator('[data-setting=jvmPreset]')).toHaveClass(/is-spotlit/);
+  await page.getByRole('combobox', { name: 'JVM argument preset' }).selectOption('ZGC');
+  await expect(page.getByRole('textbox', { name: 'Default JVM arguments' })).toHaveValue('-XX:+UseZGC');
+  await page.getByRole('combobox', { name: 'Settings scope' }).selectOption('create');
+  await page.getByRole('combobox', { name: 'JVM argument preset' }).selectOption('Default');
+  await page.keyboard.press('Control+Space');
+  await search.fill('. JVM');
+  await palette.getByRole('option', { name: 'JVM argument preset', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'JVM argument preset' })).toBeFocused();
+  await expect(page.locator('[data-setting=jvmPreset]')).toContainText('Overridden');
+});
+
+test('gooey top navigation follows keyboard selection and small-window scrolling', async ({ page }) => {
+  await open(page);
+  const nav = page.getByRole('navigation', { name: 'Settings categories' });
+  await expect(page.locator('.settings-searchbar, .settings-nav')).toHaveCount(0);
+  await nav.getByRole('button', { name: 'General', exact: true }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(nav.getByRole('button', { name: 'Java & runtime', exact: true })).toBeFocused();
+  await expect(nav.getByRole('button', { name: 'Java & runtime', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect.poll(async () => {
+    const pill = await page.locator('.settings-topnav-pill').boundingBox();
+    const button = await nav.getByRole('button', { name: 'Java & runtime', exact: true }).boundingBox();
+    return Math.abs(pill!.x - button!.x) + Math.abs(pill!.width - button!.width);
+  }).toBeLessThan(2);
+  await page.setViewportSize({ width: 600, height: 900 });
+  await page.keyboard.press('End');
+  await expect(nav.getByRole('button', { name: 'Advanced', exact: true })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Advanced', exact: true })).toBeVisible();
+  expect(await page.locator('.settings-page').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.keyboard.press('Home');
+  await expect(page.getByRole('heading', { name: 'General', exact: true })).toBeVisible();
+});
+
+test('Mac Option Space toggles Spotlight and dismissal restores focus', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'platform', { get: () => 'MacIntel' }));
+  await open(page);
+  const trigger = page.getByRole('button', { name: 'Find a setting', exact: true });
+  await trigger.focus();
+  await page.keyboard.press('Alt+Space');
+  const palette = page.getByRole('dialog', { name: 'Tachyon Spotlight' });
+  await expect(palette).toBeVisible();
+  await expect(palette.getByRole('combobox')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(palette).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await expect(palette.getByRole('combobox')).toHaveValue('. ');
+  await page.keyboard.press('Alt+Space');
+  await expect(palette).not.toBeVisible();
+});
+
 test('every category opens, controls persist, and search finds settings and maintenance actions', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await open(page);
@@ -18,14 +91,26 @@ test('every category opens, controls persist, and search finds settings and main
     await section(page, category.label);
     await expect(page.getByRole('heading', { name: category.label, exact: true })).toBeVisible();
   }
-  await page.keyboard.press('Control+k');
-  await expect(page.getByRole('searchbox', { name: 'Search settings' })).toBeFocused();
-  await page.getByRole('searchbox').fill('memory');
-  await expect(page.getByRole('spinbutton', { name: 'Maximum memory', exact: true })).toBeVisible();
-  await page.getByRole('searchbox').fill('prune');
-  await expect(page.getByRole('button', { name: 'Dry-run preview', exact: true })).toBeVisible();
-  await page.getByRole('searchbox').fill('no-match-here');
-  await expect(page.getByText('A different word might do it.')).toBeVisible();
+  await page.keyboard.press('Control+Space');
+  const palette = page.getByRole('dialog', { name: 'Tachyon Spotlight' });
+  const search = palette.getByRole('combobox', { name: 'Spotlight search' });
+  await expect(search).toBeFocused();
+  await search.fill('memory');
+  await expect(palette.getByText('Looking for a setting?')).toBeVisible();
+  await search.fill('. maximum memory');
+  await palette.getByRole('option', { name: 'Maximum memory', exact: true }).click();
+  await expect(palette).not.toBeVisible();
+  await expect(page.locator('[data-setting=memoryMax]')).toBeFocused();
+  await expect(page.locator('[data-setting=memoryMax]')).toHaveClass(/is-spotlit/);
+  await page.keyboard.press('Control+Space');
+  await search.fill('. prune');
+  await palette.getByRole('option', { name: 'Prune unreferenced files', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Dry-run preview', exact: true })).toBeFocused();
+  await page.keyboard.press('Control+Space');
+  await search.fill('. no-match-here');
+  await expect(palette.getByText('No matching settings.')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(palette).not.toBeVisible();
   await open(page);
   await expect(page.getByRole('combobox', { name: 'Language', exact: true })).toHaveValue('日本語');
   await expect(page.getByRole('switch', { name: 'Launch on startup', exact: true })).toBeChecked();
@@ -87,6 +172,9 @@ test('prune previews are cancellable and cache layers clear independently', asyn
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('248 MB');
   await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
+  await page.keyboard.press('Control+Space');
+  await expect(page.getByRole('dialog', { name: 'Tachyon Spotlight' })).toHaveCount(0);
+  await expect(dialog).toBeVisible();
   await page.screenshot({ path: 'tests/generated/settings-prune.png' });
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
@@ -125,6 +213,11 @@ test('theme preview, contrast, density and motion work at narrow widths', async 
   expect(await page.locator('.settings-workspace').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
   await page.locator('.settings-scroll').evaluate(el => el.scrollTop = 0);
   await page.screenshot({ path: 'tests/generated/settings-narrow.png' });
+  await page.keyboard.press('Control+Space');
+  await expect(page.getByRole('dialog', { name: 'Tachyon Spotlight' })).toHaveAttribute('data-reduced-motion', 'true');
+  await expect(page.locator('.spotlight-panel')).toHaveCSS('transform', 'none');
+  await page.screenshot({ path: 'tests/generated/settings-spotlight-narrow.png' });
+  await page.keyboard.press('Escape');
 });
 
 test('shorter rollback retention requires a consequence preview and token input stays out of storage', async ({ page }) => {

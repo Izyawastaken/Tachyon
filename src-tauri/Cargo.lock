@@ -4375,7 +4375,7 @@ dependencies = [
 
 [[package]]
 name = "tachyon"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "ammonia",
  "base64 0.22.1",

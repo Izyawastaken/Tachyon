@@ -1,7 +1,7 @@
 {
   "name": "tachyon",
   "private": true,
-  "version": "0.0.15",
+  "version": "0.0.16",
   "type": "module",
   "scripts": {
     "test:skins:fixtures": "cargo test --manifest-path src-tauri/Cargo.toml capture_offline_skins_preview_fixture -- --ignored",
@@ -25,6 +25,7 @@
     "@tauri-apps/plugin-updater": "~2.14.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "cn": "^0.5.2",
     "gsap": "^3.15.1",
     "lucide-react": "^1.70.0",

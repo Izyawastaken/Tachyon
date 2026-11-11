@@ -1,40 +1,23 @@
-import { useDeferredValue, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Activity, ArrowRight, ArrowUpRight, Box, Check, CheckCheck, ChevronDown, Coffee, Database, Download, GitBranch, Globe, HardDrive, Info, Keyboard, Link, Palette, RotateCcw, Search, Server, Settings2, Shield, SlidersHorizontal, Sparkles, Sprout, UserRound, X } from 'lucide-react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { Activity, ArrowUpRight, Box, Check, CheckCheck, ChevronDown, Coffee, Database, GitBranch, Globe, HardDrive, Info, Link, RotateCcw, Search, Server, Settings2, Shield, Sparkles, Sprout, UserRound, X } from 'lucide-react';
 import { ShellViewport } from '@/shell/components/ShellViewport';
 import { ActionRow, PreviewDialog, SettingField, SettingsButton, SettingsNote, type PreviewAction } from './components';
 import { CATEGORIES, DEFAULTS, INSTANCES, JVM_PRESETS, STORAGE_KEY, THEMES, contrastRatio, loadState, pairedMemoryOverrides, parseState, type Category, type CategoryId, type Setting, type SettingValue } from './model';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { GooeyNav } from './GooeyNav';
+import { CATEGORY_ICONS as ICONS, type SettingsNavigation } from './navigation';
 import './SettingsPage.css';
 
-const ICONS = { general: Settings2, java: Coffee, instances: Box, network: Download, storage: Sprout, cache: Database, sharing: GitBranch, servers: Server, appearance: Palette, accounts: UserRound, privacy: Shield, advanced: SlidersHorizontal };
-const PANEL_SEARCH: Record<CategoryId, string> = {
-  general: 'data directory instances shared store caches filesystem NTFS hardlinks detected location',
-  java: 'detected Java JDK runtime memory RAM automatic allocation',
-  instances: 'global default instance overrides inherited reset cascade',
-  network: '',
-  storage: 'garden health orphaned pots prune unreferenced dry run preview space saved integrity reverify filesystem hardlink reflink',
-  cache: 'cache stats hit rate size entries clear L1 L2 both Decker snapshot date refresh remote checkpoint',
-  sharing: 'GitHub account link device flow OAuth token share code copy regenerate snapshots retention rollback approval',
-  servers: 'Docker detected socket host engine check connection',
-  appearance: 'theme Dark Beni Dusk Crimson Deep Plum pink contrast checker preview',
-  accounts: 'Microsoft account add remove default skin cache clear',
-  privacy: 'logs folder open redacted debug bundle export diagnostics',
-  advanced: 'raw config file reveal file manager export import all settings reset sections independently',
-};
-const normalized = (value: string) => value.toLocaleLowerCase().trim();
-const matches = (value: string, query: string) => normalized(query).split(/\s+/).every(word => normalized(value).includes(word));
-const fieldMatches = (category: Category, field: Setting, group: string, query: string) => matches(`${category.label} ${group} ${field.label} ${field.description} ${field.options?.join(' ') ?? ''}`, query);
 const downloadJson = (filename: string, value: unknown) => {
   const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
   const link = document.createElement('a'); link.href = url; link.download = filename; link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-export default function SettingsPage({ sidebarOpen }: { sidebarOpen: boolean }) {
+export default function SettingsPage({ sidebarOpen, navigationTarget, onOpenSpotlight }: { sidebarOpen: boolean; navigationTarget: SettingsNavigation | null; onOpenSpotlight: (query?: string) => void }) {
   const [state, setState] = useState(loadState);
-  const [categoryId, setCategoryId] = useState<CategoryId>('general');
+  const [categoryId, setCategoryId] = useState<CategoryId>(navigationTarget?.categoryId ?? 'general');
   const [scope, setScope] = useState('global');
-  const [query, setQuery] = useState('');
-  const search = useDeferredValue(query.trim());
   const [action, setAction] = useState<PreviewAction | null>(null);
   const [notice, setNotice] = useState('');
   const [storageError, setStorageError] = useState(false);
@@ -48,9 +31,12 @@ export default function SettingsPage({ sidebarOpen }: { sidebarOpen: boolean }) 
   const [accounts, setAccounts] = useState<string[]>(['MeadowPlayer']);
   const [defaultAccount, setDefaultAccount] = useState('MeadowPlayer');
   const [skinsCleared, setSkinsCleared] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
   const importer = useRef<HTMLInputElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
+  const systemReduced = useReducedMotion();
+  const jumpTimer = useRef<number | null>(null);
+  const highlighted = useRef<HTMLElement | null>(null);
+  const revealedRequest = useRef<number | null>(null);
   const active = CATEGORIES.find(category => category.id === categoryId)!;
   const global = state.global;
   const instance = INSTANCES.find(item => item.id === scope);
@@ -62,7 +48,6 @@ export default function SettingsPage({ sidebarOpen }: { sidebarOpen: boolean }) 
   const sameVolume = Boolean(dataVolume && gardenVolume && dataVolume === gardenVolume);
   const theme = THEMES.find(item => item.id === state.theme);
   const themeStyle = theme ? Object.fromEntries(['background', 'border', 'surface', 'secondary', 'primary', 'text'].map(key => [`--theme-${key}`, theme[key as keyof typeof theme]])) as CSSProperties : undefined;
-  const shown = search ? CATEGORIES.filter(category => category.groups.some(group => group.fields.some(field => fieldMatches(category, field, group.title, search))) || matches(`${category.label} ${PANEL_SEARCH[category.id]}`, search)) : [active];
   const overrideCount = Object.keys(state.overrides[scope] ?? {}).length;
 
   useEffect(() => {
@@ -74,17 +59,40 @@ export default function SettingsPage({ sidebarOpen }: { sidebarOpen: boolean }) 
     const timeout = window.setTimeout(() => setNotice(''), 5000);
     return () => clearTimeout(timeout);
   }, [notice]);
+  const reduced = systemReduced || Boolean(global.reducedMotion);
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && (event.key === ',' || event.key.toLowerCase() === 'k') && !document.querySelector('dialog[open]')) {
-        event.preventDefault(); input.current?.focus(); input.current?.select();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    if (navigationTarget) setCategoryId(navigationTarget.categoryId);
+  }, [navigationTarget]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(revealTarget);
+    return () => cancelAnimationFrame(frame);
+  }, [navigationTarget, categoryId]);
+  useEffect(() => () => {
+    if (jumpTimer.current !== null) clearTimeout(jumpTimer.current);
+    highlighted.current?.classList.remove('is-spotlit');
   }, []);
 
-  function navigate(id: CategoryId) { setCategoryId(id); setQuery(''); scroll.current?.scrollTo({ top: 0 }); }
+  function revealTarget() {
+    if (!navigationTarget || navigationTarget.categoryId !== categoryId || revealedRequest.current === navigationTarget.requestId) return;
+    const element = scroll.current?.querySelector<HTMLElement>(`#${CSS.escape(navigationTarget.targetId)}`);
+    if (!element) return;
+    revealedRequest.current = navigationTarget.requestId;
+    if (jumpTimer.current !== null) clearTimeout(jumpTimer.current);
+    highlighted.current?.classList.remove('is-spotlit');
+    highlighted.current = element;
+    element.classList.add('is-spotlit');
+    element.scrollIntoView({ behavior: reduced ? 'instant' : 'smooth', block: 'center' });
+    const control = element.classList.contains('settings-field')
+      ? element.querySelector<HTMLElement>('.settings-field-control :is(input, select, textarea, button):not([disabled])')
+      : element.querySelector<HTMLElement>('input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])');
+    (control ?? element).focus({ preventScroll: true });
+    jumpTimer.current = window.setTimeout(() => element.classList.remove('is-spotlit'), 3500);
+  }
+  function navigate(id: CategoryId) {
+    highlighted.current?.classList.remove('is-spotlit');
+    setCategoryId(id);
+    scroll.current?.scrollTo({ top: 0, behavior: reduced ? 'instant' : 'smooth' });
+  }
   function notify(message: string) { setNotice(message); }
   function setValue(field: Setting, value: SettingValue) {
     // Retention reductions always get a consequence preview before they are applied.
@@ -153,7 +161,6 @@ export default function SettingsPage({ sidebarOpen }: { sidebarOpen: boolean }) 
     } catch (error) { notify(error instanceof SyntaxError ? 'That file is not valid JSON. Choose a Tachyon settings export.' : error instanceof Error ? error.message : 'Could not read that settings file.'); }
   }
   function specialPanels(category: Category) {
-    if (search && !matches(`${category.label} ${PANEL_SEARCH[category.id]}`, search)) return null;
     switch (category.id) {
       case 'general': return <>
       <div className="settings-paths"><span><Box size={14} /><b>Instances</b><code>{String(global.dataDir)}\instances</code></span><span><Sprout size={14} /><b>Shared store</b><code>{String(global.gardenPath)}</code></span><span><Database size={14} /><b>Caches</b><code>{String(global.dataDir)}\cache</code></span></div>
@@ -190,19 +197,18 @@ export default function SettingsPage({ sidebarOpen }: { sidebarOpen: boolean }) 
   }
 
   return <ShellViewport expanded={sidebarOpen} scrollable={false}><div className="settings-page" data-density={global.density} data-reduced-motion={Boolean(global.reducedMotion)} style={themeStyle}>
-    <header className="settings-header"><div className="settings-title"><span className="settings-title-icon"><Settings2 size={22} strokeWidth={1.5} /></span><div><h1>Settings</h1><p>A little fine-tuning. Your kind of launcher.</p></div></div><span className="settings-preview-label"><span />Interactive preview</span></header>
-    <div className="settings-searchbar"><Search size={17} aria-hidden="true" /><input ref={input} type="search" aria-label="Search settings" placeholder="Find a setting, a shortcut, a little more control…" value={query} onChange={event => { setQuery(event.target.value); scroll.current?.scrollTo({ top: 0 }); }} onKeyDown={event => { if (event.key === 'Escape') { setQuery(''); event.currentTarget.blur(); } }} />{query ? <button type="button" aria-label="Clear settings search" onClick={() => { setQuery(''); input.current?.focus(); }}><X size={15} /></button> : <kbd>Ctrl K</kbd>}</div>
-    <div className="settings-layout"><nav className="settings-nav" aria-label="Settings categories"><span className="settings-nav-label">PREFERENCES</span>{CATEGORIES.map(category => { const Icon = ICONS[category.id]; return <button type="button" key={category.id} onClick={() => navigate(category.id)} aria-current={!search && categoryId === category.id ? 'page' : undefined}><Icon size={16} strokeWidth={1.6} /><span>{category.label}</span>{!search && categoryId === category.id && <span className="settings-nav-active" />}</button>; })}<div className="settings-nav-bottom"><Keyboard size={15} /><span>Less searching.<br /><b>More playing.</b></span></div></nav>
+    <header className="settings-header"><div className="settings-title"><span className="settings-title-icon"><Settings2 size={22} strokeWidth={1.5} /></span><div><h1>Settings</h1><p>A little fine-tuning. Your kind of launcher.</p></div></div><div className="settings-header-actions"><span className="settings-preview-label"><span />Interactive preview</span><button type="button" className="settings-spotlight-trigger" aria-label="Find a setting" onClick={() => onOpenSpotlight('. ')}><Search size={15} /><span>Find a setting</span><kbd>{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌥ Space' : 'Ctrl Space'}</kbd></button></div></header>
+    <GooeyNav active={categoryId} onSelect={navigate} reducedMotion={Boolean(global.reducedMotion)} />
+    <div className="settings-layout">
     <div className="settings-workspace"><div className="settings-scope"><div><Globe size={15} /><span>Editing</span></div><div className="settings-select"><select aria-label="Settings scope" value={scope} onChange={event => setScope(event.target.value)}><option value="global">Global defaults</option>{INSTANCES.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown size={13} /></div><span className="settings-scope-hint">{instance ? `${overrideCount} overrides` : 'Applies to every instance'}</span></div>
-      <div className="settings-scroll" ref={scroll}>{search && <div className="settings-results-title"><h2>Search results</h2><p>{shown.length ? `Results in ${shown.length} ${shown.length === 1 ? 'section' : 'sections'}` : `No settings found for “${search}”.`}</p></div>}
-      {!shown.length && <div className="settings-empty"><Search size={30} strokeWidth={1.3} /><h3>A different word might do it.</h3><p>Try “memory”, “hardlink”, “theme”, or “cache”.</p><SettingsButton onClick={() => { setQuery(''); input.current?.focus(); }}>Clear search<ArrowRight size={14} /></SettingsButton></div>}
-      {shown.map(category => {
+      <div className="settings-scroll" ref={scroll}><AnimatePresence mode="wait" initial={false}>
+      {[active].map(category => {
         const Icon = ICONS[category.id];
-        return <section className="settings-category" key={category.id} aria-labelledby={`settings-category-${category.id}`}><div className="settings-category-heading"><div><span className="settings-eyebrow"><Icon size={13} />{search ? 'PREFERENCES' : instance ? 'INSTANCE PREFERENCES' : 'LAUNCHER PREFERENCES'}</span><h2 id={`settings-category-${category.id}`}>{category.label}</h2><p>{category.description}</p></div><button type="button" className="settings-section-reset" aria-label={`Reset ${category.label} section`} title="Reset this section" onClick={() => resetSection(category)}><RotateCcw size={14} /><span>Reset section</span></button></div>
+        return <motion.section className="settings-category" key={category.id} initial={{ opacity: 0, y: reduced ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reduced ? 0 : -8 }} transition={{ duration: reduced ? .08 : .2, ease: [.2, .8, .2, 1] }} onAnimationComplete={revealTarget} aria-labelledby={`settings-category-${category.id}`}><div className="settings-category-heading"><div><span className="settings-eyebrow"><Icon size={13} />{instance ? 'INSTANCE PREFERENCES' : 'LAUNCHER PREFERENCES'}</span><h2 id={`settings-category-${category.id}`} tabIndex={-1}>{category.label}</h2><p>{category.description}</p></div><button type="button" className="settings-section-reset" aria-label={`Reset ${category.label} section`} title="Reset this section" onClick={() => resetSection(category)}><RotateCcw size={14} /><span>Reset section</span></button></div>
           {instance && !category.groups.some(group => group.fields.some(field => field.instance)) && <SettingsNote icon={<Globe size={15} />}><p>These preferences apply to the launcher. Game settings in Java, Instances, and Sharing can be overridden per instance.</p></SettingsNote>}
-          {category.id === 'appearance' && specialPanels(category)}
+          {category.id === 'appearance' && <div id={`settings-panels-${category.id}`} tabIndex={-1}>{specialPanels(category)}</div>}
           {category.groups.map(group => {
-            const fields = group.fields.filter(field => !search || fieldMatches(category, field, group.title, search));
+            const fields = group.fields;
             if (!fields.length) return null;
             return <section className="settings-group" key={group.title} aria-label={group.title}><div className="settings-group-heading"><h3>{group.title}</h3>{group.description && <p>{group.description}</p>}</div><div className="settings-fields">{fields.map(field => {
               const values = field.instance ? effective : global;
@@ -210,11 +216,11 @@ export default function SettingsPage({ sidebarOpen }: { sidebarOpen: boolean }) 
               return <SettingField key={field.id} field={field} value={values[field.id]} onChange={value => setValue(field, value)} instance={Boolean(instance)} overridden={Boolean(instance && Object.prototype.hasOwnProperty.call(state.overrides[scope] ?? {}, field.id))} onReset={() => resetField(field)} disabled={disabled} />;
             })}</div></section>;
           })}
-          {category.id !== 'appearance' && specialPanels(category)}
+          {category.id !== 'appearance' && <div id={`settings-panels-${category.id}`} tabIndex={-1}>{specialPanels(category)}</div>}
           {category.id === 'general' && global.channel === 'Nightly' && <SettingsNote icon={<Sparkles size={16} />}><p>Nightly builds can introduce breaking changes. Your selected channel is a preview preference.</p></SettingsNote>}
           {category.id === 'network' && global.hash === 'Disabled' && <SettingsNote icon={<Shield size={16} />}><p>With verification disabled, corrupt or modified downloads would not be rejected by a hash check.</p></SettingsNote>}
-        </section>;
-      })}
+        </motion.section>;
+      })}</AnimatePresence>
       </div><footer className="settings-footer"><span><Check size={13} />{storageError ? 'Preview changes last for this visit only' : 'Preview preferences saved on this device'}</span><span>Sample data · no system changes</span></footer>
     </div></div>
     <input className="sr-only" tabIndex={-1} type="file" ref={importer} aria-label="Import settings file" accept=".json,application/json" onChange={event => { void importFile(event.target.files?.[0]); event.target.value = ''; }} />
